@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PDF Redactor — Private In-Browser Redaction</title>
-  
+
   <!-- Inter Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,9 +15,8 @@
 
     :root {
       --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --bg-app: #f8fafc;
+      --bg-app: #f1f5f9;
       --surface-card: #ffffff;
-      --surface-sidebar: #ffffff;
       --header-bg: #0f172a;
       
       --primary: #2563eb;
@@ -32,8 +31,8 @@
       --text-muted: #64748b;
       --text-inverse: #ffffff;
       
-      --border-color: #e2e8f0;
-      --border-dark: #334155;
+      --border-color: #cbd5e1;
+      --border-light: #e2e8f0;
       
       --radius-sm: 6px;
       --radius-md: 10px;
@@ -41,8 +40,8 @@
       --radius-full: 9999px;
 
       --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
     }
 
     html, body {
@@ -57,71 +56,73 @@
 
     .hidden { display: none !important; }
 
-    /* App Layout */
     #app-container {
       display: flex;
       flex-direction: column;
       height: 100vh;
       width: 100vw;
+      overflow: hidden;
     }
 
-    /* Modern Top Header */
+    /* --- TOP HEADER --- */
     header {
       background: var(--header-bg);
       color: var(--text-inverse);
-      height: 56px;
-      padding: 0 20px;
+      height: 52px;
+      padding: 0 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border-dark);
       flex-shrink: 0;
-      z-index: 20;
+      z-index: 30;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .brand-logo {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       background: var(--primary);
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
+      flex-shrink: 0;
     }
 
     .brand h1 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       letter-spacing: -0.01em;
+      white-space: nowrap;
     }
 
     .privacy-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
+      gap: 5px;
+      font-size: 11px;
       font-weight: 500;
       background: rgba(34, 197, 94, 0.15);
       color: #4ade80;
       border: 1px solid rgba(74, 222, 128, 0.25);
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: var(--radius-full);
+      white-space: nowrap;
     }
 
-    /* Common Buttons */
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 8px 16px;
+      gap: 6px;
+      padding: 7px 14px;
       border-radius: var(--radius-sm);
       font-size: 13px;
       font-weight: 500;
@@ -140,50 +141,54 @@
     .btn-secondary:hover:not(:disabled) { background: var(--bg-app); }
     .btn-ghost { background: transparent; color: var(--text-muted); }
     .btn-ghost:hover:not(:disabled) { background: rgba(0,0,0,0.05); color: var(--text-main); }
-    .btn-danger { background: var(--danger-light); color: var(--danger); border-color: var(--danger-border); }
-    .btn-danger:hover:not(:disabled) { background: var(--danger); color: white; }
-    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
 
-    /* Screen 1: Upload Hero */
+    .btn-toggle-active {
+      background: #fef2f2 !important;
+      color: var(--danger) !important;
+      border-color: var(--danger-border) !important;
+    }
+
+    /* --- SCREEN 1: UPLOAD HERO --- */
     #screen-upload {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 20px;
       overflow-y: auto;
     }
 
     .upload-card {
-      max-width: 540px;
+      max-width: 480px;
       width: 100%;
       background: var(--surface-card);
       border-radius: var(--radius-lg);
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border-light);
       box-shadow: var(--shadow-lg);
-      padding: 40px;
+      padding: 32px 24px;
       text-align: center;
     }
 
     .upload-icon {
-      width: 64px;
-      height: 64px;
+      width: 56px;
+      height: 56px;
       background: var(--primary-light);
       color: var(--primary);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 20px;
+      margin: 0 auto 16px;
     }
 
-    .upload-card h2 { font-size: 22px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
-    .upload-card p { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px; }
+    .upload-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .upload-card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; }
 
     .drop-zone {
       border: 2px dashed var(--border-color);
       border-radius: var(--radius-md);
-      padding: 32px 20px;
+      padding: 28px 16px;
       background: var(--bg-app);
       transition: all 0.2s ease;
       cursor: pointer;
@@ -194,19 +199,19 @@
       background: var(--primary-light);
     }
 
-    .file-pill-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+    .file-pill-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
     .file-pill {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 14px;
+      padding: 8px 12px;
       background: var(--surface-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      font-size: 13px;
+      font-size: 12px;
     }
 
-    /* Screen 2: Workspace Layout */
+    /* --- SCREEN 2: WORKSPACE --- */
     #screen-workspace {
       flex: 1;
       display: flex;
@@ -214,201 +219,179 @@
       position: relative;
     }
 
-    /* Sidebar Panel */
+    /* Main PDF Viewport Area */
+    .main-canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #cbd5e1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .canvas-toolbar {
+      height: 44px;
+      background: var(--surface-card);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 10;
+      flex-shrink: 0;
+      gap: 6px;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-indicator {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      padding: 0 4px;
+      white-space: nowrap;
+    }
+
+    .canvas-viewport {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #page-canvas {
+      background: white;
+      box-shadow: var(--shadow-md);
+      border-radius: 2px;
+      display: block;
+      touch-action: none; /* Controlled dynamically in JS for drawing vs scrolling */
+    }
+
+    /* Sidebar / Mobile Bottom Sheet Drawer */
     .sidebar {
-      width: 360px;
-      background: var(--surface-sidebar);
-      border-right: 1px solid var(--border-color);
+      width: 340px;
+      background: var(--surface-card);
+      border-left: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
-      z-index: 10;
+      z-index: 20;
+      transition: transform 0.25s ease;
     }
 
     .sidebar-tabs {
       display: flex;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-light);
       background: var(--bg-app);
+      flex-shrink: 0;
     }
 
     .tab-btn {
       flex: 1;
-      padding: 12px;
-      font-size: 13px;
+      padding: 10px;
+      font-size: 12px;
       font-weight: 500;
       color: var(--text-muted);
       border: none;
       background: none;
       cursor: pointer;
       border-bottom: 2px solid transparent;
-      transition: all 0.15s;
     }
 
     .tab-btn.active {
       color: var(--primary);
       border-bottom-color: var(--primary);
-      background: var(--surface-sidebar);
+      background: var(--surface-card);
       font-weight: 600;
     }
 
     .tab-content {
       flex: 1;
       overflow-y: auto;
-      padding: 20px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
     }
 
     .section-title {
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
-    /* Term Input & Chips */
-    .term-input-box {
-      display: flex;
-      gap: 8px;
-    }
-
+    .term-input-box { display: flex; gap: 6px; }
     .term-input-box input {
       flex: 1;
-      padding: 8px 12px;
+      padding: 7px 10px;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      font-size: 13px;
+      font-size: 12px;
       outline: none;
     }
-
     .term-input-box input:focus { border-color: var(--primary); }
 
-    .quick-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
+    .quick-chips { display: flex; flex-wrap: wrap; gap: 4px; }
     .chip {
-      padding: 4px 10px;
+      padding: 3px 8px;
       background: var(--bg-app);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-full);
-      font-size: 12px;
-      color: var(--text-main);
+      font-size: 11px;
       cursor: pointer;
-      transition: all 0.15s;
     }
+    .chip:hover { border-color: var(--primary); color: var(--primary); }
 
-    .chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
-
-    .active-terms-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      min-height: 36px;
-    }
-
+    .active-terms-list { display: flex; flex-wrap: wrap; gap: 4px; min-height: 28px; }
     .term-tag {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
+      gap: 4px;
+      padding: 3px 8px;
       background: var(--primary-light);
       color: var(--primary);
       border-radius: var(--radius-full);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
     }
-
-    .term-tag .remove-btn {
-      cursor: pointer;
-      font-size: 14px;
-      opacity: 0.7;
-    }
-
-    .term-tag .remove-btn:hover { opacity: 1; }
-
-    /* Matches List */
-    .matches-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
+    .term-tag .remove-btn { cursor: pointer; font-size: 13px; }
 
     .match-item {
       display: flex;
       align-items: flex-start;
-      gap: 10px;
-      padding: 10px;
-      border: 1px solid var(--border-color);
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--border-light);
       border-radius: var(--radius-sm);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       cursor: pointer;
-      transition: background 0.15s;
     }
-
-    .match-item:hover { background: var(--bg-app); }
     .match-item.active { border-color: var(--primary); background: var(--primary-light); }
-
     .match-text { font-size: 12px; font-weight: 600; color: var(--danger); }
-    .match-context { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
-    .match-context .highlight { color: var(--danger); font-weight: 600; background: rgba(220, 38, 38, 0.1); }
+    .match-context { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
-    /* Canvas Area */
-    .main-canvas-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #e2e8f0;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .canvas-toolbar {
-      height: 48px;
+    /* Mobile Sheet Drawer Controls */
+    .mobile-drawer-toggle {
+      display: none;
+      height: 36px;
       background: var(--surface-card);
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
+      border-top: 1px solid var(--border-color);
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
-      z-index: 5;
-    }
-
-    .toolbar-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .page-indicator {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-muted);
-      min-width: 100px;
-      text-align: center;
-    }
-
-    .canvas-viewport {
-      flex: 1;
-      overflow: auto;
-      padding: 32px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-    }
-
-    #page-canvas {
-      background: white;
-      box-shadow: var(--shadow-lg);
-      border-radius: 2px;
-      cursor: crosshair;
-      touch-action: none;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
     }
 
     /* Modal Styling */
@@ -416,58 +399,79 @@
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(2px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 100;
-      padding: 20px;
+      padding: 16px;
     }
 
     .modal-card {
       background: var(--surface-card);
       border-radius: var(--radius-lg);
-      max-width: 480px;
+      max-width: 420px;
       width: 100%;
-      padding: 28px;
+      padding: 24px;
       box-shadow: var(--shadow-lg);
     }
 
-    .modal-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
-    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px; }
-    .summary-row:last-child { border-bottom: none; }
+    .modal-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border-light); font-size: 12px; }
 
-    .progress-bar { height: 6px; background: var(--border-color); border-radius: var(--radius-full); overflow: hidden; margin: 16px 0 8px; }
+    .progress-bar { height: 6px; background: var(--border-light); border-radius: var(--radius-full); overflow: hidden; margin: 12px 0 6px; }
     .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
 
     /* Toast */
     .toast {
       position: fixed;
-      bottom: 24px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       background: var(--header-bg);
       color: white;
-      padding: 10px 18px;
+      padding: 8px 16px;
       border-radius: var(--radius-full);
-      font-size: 13px;
+      font-size: 12px;
       box-shadow: var(--shadow-lg);
       z-index: 1000;
-      animation: fadeInUp 0.25s ease;
+      white-space: nowrap;
     }
 
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translate(-50%, 10px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
-    }
-
-    /* Mobile Adaptations */
+    /* --- RESPONSIVE MOBILE STYLES (< 768px) --- */
     @media (max-width: 768px) {
-      #screen-workspace { flex-direction: column-reverse; }
-      .sidebar { width: 100%; height: 42vh; border-right: none; border-top: 1px solid var(--border-color); }
-      .canvas-toolbar { padding: 0 8px; }
-      .page-indicator { min-width: auto; font-size: 11px; }
-      .upload-card { padding: 24px; }
+      .privacy-badge-text { display: none; } /* Hide redundant text on mobile header */
+      
+      #screen-workspace {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 50vh;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        transform: translateY(calc(100% - 36px)); /* Collapse drawer down */
+      }
+
+      .sidebar.open {
+        transform: translateY(0); /* Slide drawer up */
+      }
+
+      .mobile-drawer-toggle {
+        display: flex;
+      }
+
+      .canvas-toolbar {
+        padding: 0 8px;
+      }
+
+      .hide-mobile { display: none !important; }
     }
   </style>
 </head>
@@ -478,18 +482,18 @@
     <header>
       <div class="brand">
         <div class="brand-logo">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <h1>PDF Redactor</h1>
       </div>
-      <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
         <span class="privacy-badge">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          100% In-Browser Privacy
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="privacy-badge-text">100% In-Browser Privacy</span>
         </span>
         <button id="btn-open-export" class="btn btn-primary btn-sm hidden">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export PDF
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Export</span>
         </button>
       </div>
     </header>
@@ -498,30 +502,60 @@
     <main id="screen-upload">
       <div class="upload-card">
         <div class="upload-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         </div>
-        <h2>Private PDF Redaction</h2>
-        <p>Permanently black out text and sensitive areas. Files never leave your browser.</p>
+        <h2>Private Redaction</h2>
+        <p>Black out text securely inside your browser. No files are uploaded to any cloud server.</p>
 
         <div id="drop-zone" class="drop-zone">
-          <p style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Drag & drop your PDF file here</p>
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">or choose a file from your device</p>
-          <label for="file-input" class="btn btn-primary">Browse Document</label>
+          <p style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">Drag & drop PDF here</p>
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">or choose file from device</p>
+          <label for="file-input" class="btn btn-primary btn-sm">Browse PDF</label>
           <input type="file" id="file-input" accept="application/pdf,.pdf" multiple style="display: none;">
         </div>
 
         <div id="file-pill-list" class="file-pill-list"></div>
 
-        <button id="btn-start-workspace" class="btn btn-primary hidden" style="width: 100%; margin-top: 20px;">
-          Open Workspace →
+        <button id="btn-start-workspace" class="btn btn-primary hidden" style="width: 100%; margin-top: 16px;">
+          Open Document →
         </button>
       </div>
     </main>
 
     <!-- Phase 2: Unified Workspace Screen -->
     <main id="screen-workspace" class="hidden">
-      <!-- Sidebar Controls -->
-      <aside class="sidebar">
+      <!-- Main Canvas Viewport -->
+      <section class="main-canvas-area">
+        <div class="canvas-toolbar">
+          <div class="toolbar-group">
+            <button id="btn-prev-page" class="btn btn-secondary btn-sm">‹</button>
+            <span id="page-indicator" class="page-indicator">1 / 1</span>
+            <button id="btn-next-page" class="btn btn-secondary btn-sm">›</button>
+          </div>
+
+          <div class="toolbar-group">
+            <button id="btn-mode-toggle" class="btn btn-secondary btn-sm" title="Toggle Draw Mode">
+              ✏️ <span class="hide-mobile">Draw Mode</span>
+            </button>
+            <button id="btn-clear-manual" class="btn btn-secondary btn-sm" title="Clear page drawings">
+              🗑️
+            </button>
+          </div>
+        </div>
+
+        <div id="canvas-viewport" class="canvas-viewport">
+          <canvas id="page-canvas"></canvas>
+        </div>
+      </section>
+
+      <!-- Sidebar Controls / Mobile Slide-up Drawer -->
+      <aside id="sidebar" class="sidebar">
+        <!-- Mobile Drawer Header Handle -->
+        <div id="drawer-toggle" class="mobile-drawer-toggle">
+          <span id="drawer-title">🔍 Search Terms & Controls</span>
+          <span id="drawer-arrow">▲</span>
+        </div>
+
         <div class="sidebar-tabs">
           <button id="tab-auto" class="tab-btn active">1. Auto-Search</button>
           <button id="tab-matches" class="tab-btn">2. Matches (<span id="match-count-badge">0</span>)</button>
@@ -532,13 +566,13 @@
           <div>
             <div class="section-title">Add Terms to Redact</div>
             <div class="term-input-box">
-              <input type="text" id="term-input" placeholder="e.g. John Doe, SSN, confidential">
-              <button id="btn-add-term" class="btn btn-primary">Add</button>
+              <input type="text" id="term-input" placeholder="e.g. John Doe, SSN">
+              <button id="btn-add-term" class="btn btn-primary btn-sm">Add</button>
             </div>
           </div>
 
           <div>
-            <div class="section-title">Quick Presets</div>
+            <div class="section-title">Presets</div>
             <div class="quick-chips">
               <span class="chip" data-term="Name">Name</span>
               <span class="chip" data-term="Email">Email</span>
@@ -553,15 +587,14 @@
             <div id="active-terms-list" class="active-terms-list"></div>
           </div>
 
-          <button id="btn-scan-matches" class="btn btn-primary" style="margin-top: auto;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Scan Document
+          <button id="btn-scan-matches" class="btn btn-primary" style="margin-top: auto; width: 100%;">
+            Scan PDF
           </button>
         </div>
 
         <!-- Tab 2: Match Review -->
         <div id="tab-content-matches" class="tab-content hidden">
-          <div class="matches-header">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
             <span class="section-title" style="margin:0;">Found Redactions</span>
             <div>
               <button id="btn-select-all" class="btn btn-ghost btn-sm">All</button>
@@ -571,60 +604,40 @@
           <div id="matches-container" style="flex:1; overflow-y:auto;"></div>
         </div>
       </aside>
-
-      <!-- Main Canvas Canvas Area -->
-      <section class="main-canvas-area">
-        <div class="canvas-toolbar">
-          <div class="toolbar-group">
-            <button id="btn-prev-page" class="btn btn-secondary btn-sm">←</button>
-            <span id="page-indicator" class="page-indicator">Page 1 / 1</span>
-            <button id="btn-next-page" class="btn btn-secondary btn-sm">→</button>
-          </div>
-
-          <div class="toolbar-group">
-            <span style="font-size: 11px; color: var(--text-muted); background: white; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color);">
-              ✏️ Drag box to manually redact
-            </span>
-            <button id="btn-clear-manual" class="btn btn-secondary btn-sm">Clear Page Drawn</button>
-          </div>
-        </div>
-
-        <div class="canvas-viewport">
-          <canvas id="page-canvas"></canvas>
-        </div>
-      </section>
     </main>
 
     <!-- Modal Export Summary -->
     <div id="export-modal" class="modal-overlay hidden">
       <div class="modal-card">
-        <h3>Export Redacted Document</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-          Redactions will be permanently burned into a newly generated flat PDF image layer.
+        <h3>Export Redacted PDF</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+          All marked regions will be burned permanently into flat page images.
         </p>
 
         <div id="modal-summary-content"></div>
 
         <div id="export-progress" class="hidden">
           <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
-          <p id="progress-text" style="font-size: 12px; color: var(--text-muted); text-align: center;">Rendering page...</p>
+          <p id="progress-text" style="font-size: 11px; color: var(--text-muted); text-align: center;">Rendering page...</p>
         </div>
 
-        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
-          <button id="btn-close-modal" class="btn btn-secondary">Cancel</button>
-          <button id="btn-download" class="btn btn-primary">Download Flattened PDF</button>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+          <button id="btn-close-modal" class="btn btn-secondary btn-sm">Cancel</button>
+          <button id="btn-download" class="btn btn-primary btn-sm">Download PDF</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Dependencies -->
+  <!-- PDF-Lib Dependency -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+  <!-- App JavaScript Engine -->
   <script type="module">
     import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
-    // State
+    // State Management
     const state = {
       files: [],
       searchTerms: [],
@@ -632,6 +645,7 @@
       manualRects: [],
       currentPage: 1,
       currentFileIndex: 0,
+      drawMode: true, // Enabled by default
     };
 
     const $ = id => document.getElementById(id);
@@ -643,10 +657,10 @@
       toast.className = 'toast';
       toast.textContent = msg;
       document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
+      setTimeout(() => toast.remove(), 2800);
     }
 
-    // File Handling
+    // --- FILE HANDLING ---
     async function handleFiles(files) {
       for (const file of Array.from(files)) {
         try {
@@ -660,7 +674,7 @@
             arrayBuffer: buffer
           });
         } catch (e) {
-          showToast(`Error opening ${file.name}`);
+          showToast(`Error opening file: ${file.name}`);
         }
       }
       renderFileList();
@@ -672,8 +686,8 @@
       state.files.forEach((f, idx) => {
         const item = document.createElement('div');
         item.className = 'file-pill';
-        item.innerHTML = `<span><strong>${f.name}</strong> (${f.numPages} pages)</span>
-          <button style="background:none;border:none;color:var(--danger);cursor:pointer;font-weight:600;" data-idx="${idx}">✕</button>`;
+        item.innerHTML = `<span><strong>${f.name}</strong> (${f.numPages} p.)</span>
+          <button style="background:none;border:none;color:var(--danger);cursor:pointer;font-weight:700;" data-idx="${idx}">✕</button>`;
         list.appendChild(item);
       });
 
@@ -687,7 +701,7 @@
       $('btn-start-workspace').classList.toggle('hidden', state.files.length === 0);
     }
 
-    // App Navigation
+    // --- NAVIGATION & VIEWS ---
     $('btn-start-workspace').addEventListener('click', () => {
       $('screen-upload').classList.add('hidden');
       $('screen-workspace').classList.remove('hidden');
@@ -696,7 +710,14 @@
       updateNav();
     });
 
-    // Terms logic
+    // Mobile Drawer Toggle
+    const sidebar = $('sidebar');
+    $('drawer-toggle').addEventListener('click', () => {
+      const isOpen = sidebar.classList.toggle('open');
+      $('drawer-arrow').textContent = isOpen ? '▼' : '▲';
+    });
+
+    // Terms Management
     function addTerm(text) {
       const clean = text.trim();
       if (!clean) return;
@@ -737,7 +758,7 @@
       $('tab-content-matches').classList.remove('hidden'); $('tab-content-auto').classList.add('hidden');
     });
 
-    // Scan Text
+    // --- SEARCH SCANNER ---
     $('btn-scan-matches').addEventListener('click', async () => {
       if (state.searchTerms.length === 0) return showToast('Add at least one term first');
       state.matches = [];
@@ -831,22 +852,29 @@
       });
     }
 
-    // Canvas Rendering & Drawing
+    // --- CANVAS ENGINE & DRAWING HANDLERS ---
     let activeViewport = null;
+    const canvas = $('page-canvas');
+
     async function renderCurrentPage() {
       if (!state.files.length) return;
       const file = state.files[state.currentFileIndex];
       const page = await file.pdfProxy.getPage(state.currentPage);
       
-      const canvas = $('page-canvas');
       const dpr = Math.max(window.devicePixelRatio || 1, 2);
-      const baseVp = page.getViewport({ scale: 1.2 });
-      activeViewport = page.getViewport({ scale: 1.2 * dpr });
+      const baseVp = page.getViewport({ scale: 1.0 });
+      
+      // Auto-fit responsive scale on smaller screens
+      const containerWidth = $('canvas-viewport').clientWidth - 32;
+      const fitScale = Math.min(containerWidth / baseVp.width, 1.4);
+      
+      const displayVp = page.getViewport({ scale: fitScale });
+      activeViewport = page.getViewport({ scale: fitScale * dpr });
 
       canvas.width = activeViewport.width;
       canvas.height = activeViewport.height;
-      canvas.style.width = `${baseVp.width}px`;
-      canvas.style.height = `${baseVp.height}px`;
+      canvas.style.width = `${displayVp.width}px`;
+      canvas.style.height = `${displayVp.height}px`;
 
       const ctx = canvas.getContext('2d');
       await page.render({ canvasContext: ctx, viewport: activeViewport }).promise;
@@ -870,23 +898,37 @@
       });
     }
 
-    // Manual Draw Interaction
+    // Touch & Mouse Drawing Logic
     let isDrawing = false, startPos = null;
-    const canvas = $('page-canvas');
 
     function getCoords(e) {
       const r = canvas.getBoundingClientRect();
-      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-      const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
-      return { x: cx * (canvas.width / r.width), y: cy * (canvas.height / r.height) };
+      const touch = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+      const cx = touch.clientX - r.left;
+      const cy = touch.clientY - r.top;
+      return { 
+        x: cx * (canvas.width / r.width), 
+        y: cy * (canvas.height / r.height) 
+      };
     }
 
-    canvas.addEventListener('mousedown', e => { isDrawing = true; startPos = getCoords(e); });
-    window.addEventListener('mouseup', e => {
+    function onPointerStart(e) {
+      if (!state.drawMode) return;
+      if (e.cancelable) e.preventDefault(); // Stop mobile scroll when drawing
+      isDrawing = true;
+      startPos = getCoords(e);
+    }
+
+    function onPointerMove(e) {
+      if (!isDrawing) return;
+      if (e.cancelable) e.preventDefault();
+    }
+
+    function onPointerEnd(e) {
       if (!isDrawing) return;
       isDrawing = false;
       const endPos = getCoords(e);
-      if (Math.abs(endPos.x - startPos.x) > 5 && activeViewport) {
+      if (Math.abs(endPos.x - startPos.x) > 8 && Math.abs(endPos.y - startPos.y) > 8 && activeViewport) {
         const box = activeViewport.convertToPdfRectangle([
           Math.min(startPos.x, endPos.x), Math.min(startPos.y, endPos.y),
           Math.max(startPos.x, endPos.x), Math.max(startPos.y, endPos.y)
@@ -894,6 +936,24 @@
         state.manualRects.push({ fileIndex: state.currentFileIndex, pageNumber: state.currentPage, box });
         renderCurrentPage();
       }
+    }
+
+    // Attach Mouse Listeners
+    canvas.addEventListener('mousedown', onPointerStart);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerEnd);
+
+    // Attach Mobile Touch Listeners explicitly
+    canvas.addEventListener('touchstart', onPointerStart, { passive: false });
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerEnd);
+
+    // Mode Toggle
+    $('btn-mode-toggle').addEventListener('click', () => {
+      state.drawMode = !state.drawMode;
+      $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
+      canvas.style.touchAction = state.drawMode ? 'none' : 'auto';
+      showToast(state.drawMode ? 'Draw Mode Active' : 'Pan/Scroll Mode Active');
     });
 
     $('btn-clear-manual').addEventListener('click', () => {
@@ -904,7 +964,7 @@
     // Pagination
     function updateNav() {
       const f = state.files[state.currentFileIndex];
-      $('page-indicator').textContent = `Page ${state.currentPage} / ${f ? f.numPages : 1}`;
+      $('page-indicator').textContent = `${state.currentPage} / ${f ? f.numPages : 1}`;
     }
 
     $('btn-prev-page').addEventListener('click', () => {
@@ -915,20 +975,20 @@
       if (state.currentPage < f.numPages) { state.currentPage++; renderCurrentPage(); updateNav(); }
     });
 
-    // Dropzone & File Loader Events
+    // Dropzone Events
     const dz = $('drop-zone');
     dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
     dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
     dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
     $('file-input').addEventListener('change', e => handleFiles(e.target.files));
 
-    // Export Process Modal
+    // Export Modal Process
     $('btn-open-export').addEventListener('click', () => {
       const selected = state.matches.filter(m => m.selected).length;
       $('modal-summary-content').innerHTML = `
-        <div class="summary-row"><span>Total Document Pages:</span> <strong>${state.files.reduce((a,b)=>a+b.numPages,0)}</strong></div>
-        <div class="summary-row"><span>Selected Auto-Redactions:</span> <strong>${selected}</strong></div>
-        <div class="summary-row"><span>Manual Redaction Regions:</span> <strong>${state.manualRects.length}</strong></div>
+        <div class="summary-row"><span>Total Pages:</span> <strong>${state.files.reduce((a,b)=>a+b.numPages,0)}</strong></div>
+        <div class="summary-row"><span>Auto Redactions:</span> <strong>${selected}</strong></div>
+        <div class="summary-row"><span>Hand Drawn Boxes:</span> <strong>${state.manualRects.length}</strong></div>
       `;
       $('export-modal').classList.remove('hidden');
     });
@@ -954,7 +1014,7 @@
           tempCanvas.width = vp.width; tempCanvas.height = vp.height;
           await page.render({ canvasContext: tempCtx, viewport: vp }).promise;
 
-          // Burn Redactions as solid black
+          // Burn Redactions as solid black rectangles
           const pMatches = state.matches.filter(m => m.fileIndex === fi && m.pageNumber === pn && m.selected);
           const pManuals = state.manualRects.filter(r => r.fileIndex === fi && r.pageNumber === pn);
 
@@ -988,7 +1048,7 @@
       
       $('export-modal').classList.add('hidden');
       $('export-progress').classList.add('hidden');
-      showToast('PDF Export Complete!');
+      showToast('Export Complete!');
     });
   </script>
 </body>
