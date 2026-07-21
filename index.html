@@ -151,7 +151,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
             <p><strong>Drag & drop</strong> PDF files here</p>
             <p>or</p>
-            <button id="btn-browse" class="btn btn-primary">Browse Files</button>
+            <label for="file-input" class="btn btn-primary">Browse Files</label>
             <input type="file" id="file-input" accept=".pdf,application/pdf" multiple class="sr-only">
           </div>
         </div>
@@ -265,7 +265,6 @@
     const screens = { upload: $('screen-upload'), terms: $('screen-terms'), preview: $('screen-preview'), export: $('screen-export') };
     const dropZone = $('drop-zone');
     const fileInput = $('file-input');
-    const btnBrowse = $('btn-browse');
     const fileList = $('file-list');
     const btnToTerms = $('btn-to-terms');
     const termInput = $('term-input');
@@ -379,7 +378,6 @@
       handleFiles(pdfFiles);
     }
 
-    btnBrowse.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
     dropZone.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', e => { if (e.target.files.length) storeFiles(e.target.files); });
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
