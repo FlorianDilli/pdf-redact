@@ -271,7 +271,7 @@
       box-shadow: var(--shadow-md);
       border-radius: 2px;
       display: block;
-      touch-action: none; /* Disables page gestures on canvas for seamless touch drawing */
+      touch-action: none;
     }
 
     /* Sidebar / Mobile Bottom Sheet Drawer */
@@ -642,7 +642,7 @@
       files: [],
       searchTerms: [],
       matches: [],
-      manualRects: [],
+      manualRects: [], // Stores normalized rect coordinates [xRatio, yRatio, wRatio, hRatio]
       currentPage: 1,
       currentFileIndex: 0,
       drawMode: true,
@@ -824,7 +824,7 @@
       showToast(`Found ${state.matches.length} matches`);
     });
 
-    // ALL / NONE BULK CONTROLS FIXED HERE
+    // Bulk selection controls
     $('btn-select-all').addEventListener('click', () => {
       state.matches.forEach(m => m.selected = true);
       renderMatchesList();
@@ -865,7 +865,7 @@
       });
     }
 
-    // --- CANVAS ENGINE & BULLETPROOF POINTER DRAWING ---
+    // --- CANVAS ENGINE & DRAWING ---
     let activeViewport = null;
     const canvas = $('page-canvas');
 
@@ -895,6 +895,7 @@
       const pageMatches = state.matches.filter(m => m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage && m.selected);
       const pageManuals = state.manualRects.filter(r => r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage);
 
+      // Auto-Search Matches
       pageMatches.forEach(m => {
         m.pdfBoxes.forEach(box => {
           const rect = activeViewport.convertToViewportRectangle(box);
@@ -903,14 +904,15 @@
         });
       });
 
+      // Hand-Drawn Boxes (Scaled via normalized ratios)
       pageManuals.forEach(r => {
-        const rect = activeViewport.convertToViewportRectangle(r.box);
+        const [nx, ny, nw, nh] = r.normRect;
         ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
-        ctx.fillRect(Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.abs(rect[2] - rect[0]), Math.abs(rect[3] - rect[1]));
+        ctx.fillRect(nx * canvas.width, ny * canvas.height, nw * canvas.width, nh * canvas.height);
       });
     }
 
-    // Unified Mobile/Desktop Drag-Draw Engine
+    // Drag-Draw Pointer Engine
     let isDrawing = false, startPos = null, canvasSnapshot = null;
 
     function getCoords(e) {
@@ -929,7 +931,6 @@
       isDrawing = true;
       startPos = getCoords(e);
 
-      // Snapshot clean canvas state for smooth drag preview
       const ctx = canvas.getContext('2d');
       canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     }
@@ -939,7 +940,6 @@
       const curPos = getCoords(e);
       const ctx = canvas.getContext('2d');
       
-      // Restore clean canvas & overlay live rectangle frame
       ctx.putImageData(canvasSnapshot, 0, 0);
       const x = Math.min(startPos.x, curPos.x);
       const y = Math.min(startPos.y, curPos.y);
@@ -958,12 +958,18 @@
       isDrawing = false;
       const endPos = getCoords(e);
 
-      if (Math.abs(endPos.x - startPos.x) > 8 && Math.abs(endPos.y - startPos.y) > 8 && activeViewport) {
-        const box = activeViewport.convertToPdfRectangle([
-          Math.min(startPos.x, endPos.x), Math.min(startPos.y, endPos.y),
-          Math.max(startPos.x, endPos.x), Math.max(startPos.y, endPos.y)
-        ]);
-        state.manualRects.push({ fileIndex: state.currentFileIndex, pageNumber: state.currentPage, box });
+      // Store normalized coordinates (percentage ratio of canvas size)
+      const nx = Math.min(startPos.x, endPos.x) / canvas.width;
+      const ny = Math.min(startPos.y, endPos.y) / canvas.height;
+      const nw = Math.abs(endPos.x - startPos.x) / canvas.width;
+      const nh = Math.abs(endPos.y - startPos.y) / canvas.height;
+
+      if (nw > 0.005 && nh > 0.005) {
+        state.manualRects.push({
+          fileIndex: state.currentFileIndex,
+          pageNumber: state.currentPage,
+          normRect: [nx, ny, nw, nh]
+        });
       }
       canvasSnapshot = null;
       renderCurrentPage();
@@ -975,7 +981,7 @@
     canvas.addEventListener('pointerup', onPointerEnd);
     canvas.addEventListener('pointercancel', onPointerEnd);
 
-    // Mode Toggle Button
+    // Mode Toggle
     $('btn-mode-toggle').addEventListener('click', () => {
       state.drawMode = !state.drawMode;
       $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
@@ -988,7 +994,7 @@
       renderCurrentPage();
     });
 
-    // Pagination Controls
+    // Navigation Controls
     function updateNav() {
       const f = state.files[state.currentFileIndex];
       $('page-indicator').textContent = `${state.currentPage} / ${f ? f.numPages : 1}`;
@@ -1038,7 +1044,8 @@
           const vp = page.getViewport({ scale: 2.0 });
           const unscaled = page.getViewport({ scale: 1.0 });
 
-          tempCanvas.width = vp.width; tempCanvas.height = vp.height;
+          tempCanvas.width = vp.width; 
+          tempCanvas.height = vp.height;
           await page.render({ canvasContext: tempCtx, viewport: vp }).promise;
 
           // Burn Redactions as solid black rectangles
@@ -1046,13 +1053,17 @@
           const pManuals = state.manualRects.filter(r => r.fileIndex === fi && r.pageNumber === pn);
 
           tempCtx.fillStyle = '#000000';
+
+          // 1. Burn Auto Matches
           pMatches.forEach(m => m.pdfBoxes.forEach(b => {
             const r = vp.convertToViewportRectangle(b);
             tempCtx.fillRect(Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.abs(r[2] - r[0]), Math.abs(r[3] - r[1]));
           }));
+
+          // 2. Burn Hand Drawn Boxes using relative ratios
           pManuals.forEach(r => {
-            const rect = vp.convertToViewportRectangle(r.box);
-            tempCtx.fillRect(Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.abs(rect[2] - rect[0]), Math.abs(rect[3] - rect[1]));
+            const [nx, ny, nw, nh] = r.normRect;
+            tempCtx.fillRect(nx * tempCanvas.width, ny * tempCanvas.height, nw * tempCanvas.width, nh * tempCanvas.height);
           });
 
           const blob = await new Promise(res => tempCanvas.toBlob(res, 'image/png'));
