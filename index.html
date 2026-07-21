@@ -14,7 +14,6 @@
     }
     html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
     .hidden { display: none !important; }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .screen { display: none; min-height: 100vh; }
     .screen.active { display: flex; flex-direction: column; }
 
@@ -151,8 +150,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
             <p><strong>Drag & drop</strong> PDF files here</p>
             <p>or</p>
-            <label for="file-input" class="btn btn-primary">Browse Files</label>
-            <input type="file" id="file-input" accept=".pdf,application/pdf" multiple class="sr-only">
+            <label id="label-browse" class="btn btn-primary" style="position:relative;display:inline-flex;overflow:hidden;">
+              Browse Files
+              <input type="file" id="file-input" accept=".pdf,application/pdf" multiple style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;">
+            </label>
           </div>
         </div>
         <div id="file-list" class="file-list"></div>
@@ -379,10 +380,20 @@
     }
 
     dropZone.addEventListener('click', e => {
-      if (e.target.closest('label[for="file-input"]')) return;
+      if (e.target.closest('#label-browse')) return;
       fileInput.click();
     });
-    fileInput.addEventListener('change', e => { if (e.target.files.length) storeFiles(e.target.files); });
+    fileInput.addEventListener('change', e => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      try {
+        storeFiles(files);
+      } catch (err) {
+        showToast('Error processing files: ' + err.message);
+        console.error(err);
+      }
+      e.target.value = '';
+    });
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
     dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files.length) storeFiles(e.dataTransfer.files); });
