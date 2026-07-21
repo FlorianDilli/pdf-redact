@@ -4,315 +4,638 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PDF Redactor — Private In-Browser Redaction</title>
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --bg: #f8fafc; --surface: #ffffff; --primary: #2563eb; --primary-hover: #1d4ed8;
-      --danger: #dc2626; --danger-light: #fef2f2; --text: #1e293b; --muted: #64748b;
-      --border: #e2e8f0; --radius: 8px; --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --bg-app: #f8fafc;
+      --surface-card: #ffffff;
+      --surface-sidebar: #ffffff;
+      --header-bg: #0f172a;
+      
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --danger-border: #fca5a5;
+
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-inverse: #ffffff;
+      
+      --border-color: #e2e8f0;
+      --border-dark: #334155;
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
     }
-    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      font-family: var(--font-main);
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
     .hidden { display: none !important; }
-    .screen { display: none; min-height: 100vh; }
-    .screen.active { display: flex; flex-direction: column; }
 
-    /* Header */
-    #app-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
-    #app-header .header-content { display: flex; align-items: center; gap: 16px; }
-    #app-header h1 { font-size: 18px; font-weight: 600; }
-    .privacy-badge { font-size: 12px; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 999px; font-weight: 500; }
-    .privacy-note { font-size: 13px; color: var(--muted); margin-top: 8px; }
-
-    /* Container */
-    .container { max-width: 720px; margin: 0 auto; padding: 40px 24px; width: 100%; }
-    .hero { text-align: center; margin-bottom: 32px; }
-    .hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
-    .hero p { color: var(--muted); font-size: 16px; }
-
-    /* Buttons */
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius); border: 1px solid transparent; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; user-select: none; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
-    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
-    .btn-secondary:hover:not(:disabled) { background: var(--bg); }
-    .btn-sm { padding: 6px 12px; font-size: 13px; }
-    .btn-danger { background: var(--danger); color: #fff; }
-    .btn-danger:hover:not(:disabled) { background: #b91c1c; }
-
-    /* Drop zone */
-    .drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 48px 24px; text-align: center; background: var(--surface); transition: all 0.2s; cursor: pointer; }
-    .drop-zone.drag-over { border-color: var(--primary); background: #eff6ff; }
-    .drop-zone-content { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    .drop-zone svg { width: 48px; height: 48px; color: var(--muted); }
-    .drop-zone p { color: var(--muted); font-size: 14px; }
-    .drop-zone .btn { margin-top: 8px; }
-
-    /* File list */
-    .file-list { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
-    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
-    .file-item .file-info { display: flex; align-items: center; gap: 12px; }
-    .file-item .file-icon { width: 32px; height: 32px; background: #fef2f2; color: var(--danger); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
-    .file-item .file-name { font-weight: 500; font-size: 14px; word-break: break-all; }
-    .file-item .file-meta { font-size: 12px; color: var(--muted); }
-    .file-item .btn-remove { padding: 4px 8px; font-size: 12px; }
-
-    /* Actions */
-    .actions { margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; }
-
-    /* Terms screen */
-    .quick-add { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .quick-add .btn { background: var(--bg); color: var(--text); border-color: var(--border); }
-    .quick-add .btn:hover { background: var(--border); }
-    .term-input-group { display: flex; gap: 8px; margin-bottom: 16px; }
-    .term-input-group input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; }
-    .term-input-group input:focus { outline: none; border-color: var(--primary); }
-    .terms-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-height: 40px; }
-    .term-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #eff6ff; color: var(--primary); border-radius: 999px; font-size: 13px; font-weight: 500; }
-    .term-tag .remove { cursor: pointer; font-size: 16px; line-height: 1; opacity: 0.7; }
-    .term-tag .remove:hover { opacity: 1; }
-
-    /* Preview layout */
-    .preview-layout { display: flex; flex: 1; overflow: hidden; }
-    .sidebar { width: 360px; min-width: 360px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-    .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); }
-    .sidebar-header h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-    .match-summary { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-    .sidebar-actions { display: flex; gap: 8px; }
-    .matches-list { flex: 1; overflow-y: auto; padding: 8px; }
-    .match-group-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 8px; }
-    .match-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border-radius: var(--radius); cursor: pointer; transition: background 0.15s; border: 1px solid transparent; }
-    .match-item:hover { background: var(--bg); }
-    .match-item.active { background: #eff6ff; border-color: var(--primary); }
-    .match-item input[type="checkbox"] { margin-top: 2px; cursor: pointer; }
-    .match-item .match-content { flex: 1; min-width: 0; }
-    .match-item .match-text { font-size: 13px; font-weight: 600; color: var(--danger); margin-bottom: 2px; }
-    .match-item .match-context { font-size: 12px; color: var(--muted); line-height: 1.4; word-break: break-word; }
-    .match-item .match-context .highlight { color: var(--danger); font-weight: 600; }
-
-    .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #e5e7eb; }
-    .canvas-toolbar { padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    .canvas-toolbar .toolbar-group { display: flex; align-items: center; gap: 8px; }
-    .canvas-toolbar .page-indicator { font-size: 13px; color: var(--muted); font-weight: 500; }
-    .draw-hint { font-size: 12px; color: var(--muted); background: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; }
-    .canvas-container { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; align-items: flex-start; touch-action: pan-x pan-y; }
-    
-    #page-canvas { 
-      background: #fff; 
-      box-shadow: var(--shadow-lg); 
-      max-width: 100%; 
-      height: auto; 
-      display: block; 
-      cursor: crosshair; 
-      touch-action: none; /* Disables default scroll touch action for seamless mobile drawing */
+    /* App Layout */
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
     }
 
-    .preview-actions { padding: 12px 24px; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
+    /* Modern Top Header */
+    header {
+      background: var(--header-bg);
+      color: var(--text-inverse);
+      height: 56px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-dark);
+      flex-shrink: 0;
+      z-index: 20;
+    }
 
-    /* Export screen */
-    .export-summary { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
-    .export-summary h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
-    .export-summary .summary-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
-    .export-summary .summary-row .label { color: var(--muted); }
-    .export-summary .summary-row .value { font-weight: 600; }
-    .export-progress { margin-bottom: 24px; }
-    .progress-bar { height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
-    .progress-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.3s; width: 0%; }
-    .progress-text { font-size: 13px; color: var(--muted); text-align: center; }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-    /* Footer */
-    #app-footer { padding: 16px 24px; text-align: center; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); background: var(--surface); }
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .privacy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.25);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+    }
+
+    /* Common Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      outline: none;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface-card); color: var(--text-main); border-color: var(--border-color); }
+    .btn-secondary:hover:not(:disabled) { background: var(--bg-app); }
+    .btn-ghost { background: transparent; color: var(--text-muted); }
+    .btn-ghost:hover:not(:disabled) { background: rgba(0,0,0,0.05); color: var(--text-main); }
+    .btn-danger { background: var(--danger-light); color: var(--danger); border-color: var(--danger-border); }
+    .btn-danger:hover:not(:disabled) { background: var(--danger); color: white; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* Screen 1: Upload Hero */
+    #screen-upload {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .upload-card {
+      max-width: 540px;
+      width: 100%;
+      background: var(--surface-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-lg);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .upload-card h2 { font-size: 22px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+    .upload-card p { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px; }
+
+    .drop-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 32px 20px;
+      background: var(--bg-app);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .file-pill-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+    .file-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+
+    /* Screen 2: Workspace Layout */
+    #screen-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Sidebar Panel */
+    .sidebar {
+      width: 360px;
+      background: var(--surface-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-app);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: var(--surface-sidebar);
+      font-weight: 600;
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    /* Term Input & Chips */
+    .term-input-box {
+      display: flex;
+      gap: 8px;
+    }
+
+    .term-input-box input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .term-input-box input:focus { border-color: var(--primary); }
+
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      padding: 4px 10px;
+      background: var(--bg-app);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    .active-terms-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 36px;
+    }
+
+    .term-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .term-tag .remove-btn {
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+    .term-tag .remove-btn:hover { opacity: 1; }
+
+    /* Matches List */
+    .matches-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .match-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .match-item:hover { background: var(--bg-app); }
+    .match-item.active { border-color: var(--primary); background: var(--primary-light); }
+
+    .match-text { font-size: 12px; font-weight: 600; color: var(--danger); }
+    .match-context { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+    .match-context .highlight { color: var(--danger); font-weight: 600; background: rgba(220, 38, 38, 0.1); }
+
+    /* Canvas Area */
+    .main-canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #e2e8f0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .canvas-toolbar {
+      height: 48px;
+      background: var(--surface-card);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 5;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .page-indicator {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .canvas-viewport {
+      flex: 1;
+      overflow: auto;
+      padding: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    #page-canvas {
+      background: white;
+      box-shadow: var(--shadow-lg);
+      border-radius: 2px;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-card {
+      background: var(--surface-card);
+      border-radius: var(--radius-lg);
+      max-width: 480px;
+      width: 100%;
+      padding: 28px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+    .summary-row:last-child { border-bottom: none; }
+
+    .progress-bar { height: 6px; background: var(--border-color); border-radius: var(--radius-full); overflow: hidden; margin: 16px 0 8px; }
+    .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
 
     /* Toast */
-    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 12px 20px; border-radius: var(--radius); font-size: 14px; z-index: 1000; animation: fadeIn 0.3s; text-align: center; max-width: 90vw; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: white;
+      padding: 10px 18px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      box-shadow: var(--shadow-lg);
+      z-index: 1000;
+      animation: fadeInUp 0.25s ease;
+    }
 
-    /* Responsive */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translate(-50%, 10px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    /* Mobile Adaptations */
     @media (max-width: 768px) {
-      .preview-layout { flex-direction: column; }
-      .sidebar { width: 100%; min-width: auto; max-height: 35vh; border-right: none; border-bottom: 1px solid var(--border); }
-      .hero h1 { font-size: 24px; }
-      .container { padding: 24px 16px; }
-      .canvas-toolbar { padding: 8px 12px; }
+      #screen-workspace { flex-direction: column-reverse; }
+      .sidebar { width: 100%; height: 42vh; border-right: none; border-top: 1px solid var(--border-color); }
+      .canvas-toolbar { padding: 0 8px; }
+      .page-indicator { min-width: auto; font-size: 11px; }
+      .upload-card { padding: 24px; }
     }
   </style>
 </head>
 <body>
-  <div id="app">
+
+  <div id="app-container">
     <!-- Header -->
-    <header id="app-header" class="hidden">
-      <div class="header-content">
+    <header>
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
         <h1>PDF Redactor</h1>
-        <span class="privacy-badge">100% Private · Browser Only</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="privacy-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          100% In-Browser Privacy
+        </span>
+        <button id="btn-open-export" class="btn btn-primary btn-sm hidden">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export PDF
+        </button>
       </div>
     </header>
 
-    <!-- Screen 1: Upload -->
-    <section id="screen-upload" class="screen active">
-      <div class="container">
-        <div class="hero">
-          <h1>PDF Redactor</h1>
-          <p>Redact sensitive information from your PDFs — entirely in your browser.</p>
-          <p class="privacy-note">🔒 No data leaves your device. No servers. No cloud services.</p>
+    <!-- Phase 1: Upload Hero Screen -->
+    <main id="screen-upload">
+      <div class="upload-card">
+        <div class="upload-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         </div>
+        <h2>Private PDF Redaction</h2>
+        <p>Permanently black out text and sensitive areas. Files never leave your browser.</p>
+
         <div id="drop-zone" class="drop-zone">
-          <div class="drop-zone-content">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-            <p><strong>Drag & drop</strong> PDF files here</p>
-            <p>or</p>
-            <label for="file-input" class="btn btn-primary">
-              Browse Files
-            </label>
-            <input type="file" id="file-input" accept="application/pdf,.pdf" multiple style="display: none;">
-          </div>
+          <p style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Drag & drop your PDF file here</p>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">or choose a file from your device</p>
+          <label for="file-input" class="btn btn-primary">Browse Document</label>
+          <input type="file" id="file-input" accept="application/pdf,.pdf" multiple style="display: none;">
         </div>
-        <div id="file-list" class="file-list"></div>
-        <div class="actions">
-          <button id="btn-to-terms" class="btn btn-primary" disabled>Continue →</button>
-        </div>
-      </div>
-    </section>
 
-    <!-- Screen 2: Terms -->
-    <section id="screen-terms" class="screen">
-      <div class="container">
-        <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 8px;">Define Terms to Redact</h2>
-        <p style="color: var(--muted); margin-bottom: 20px;">Add words or phrases you want to remove from the document.</p>
-        <div class="quick-add">
-          <button class="btn btn-sm quick-term" data-term="Name">Name</button>
-          <button class="btn btn-sm quick-term" data-term="Email">Email</button>
-          <button class="btn btn-sm quick-term" data-term="Phone">Phone</button>
-          <button class="btn btn-sm quick-term" data-term="Address">Address</button>
-          <button class="btn btn-sm quick-term" data-term="SSN">SSN</button>
-        </div>
-        <div class="term-input-group">
-          <input type="text" id="term-input" placeholder="Enter a word or phrase..." autocomplete="off">
-          <button id="btn-add-term" class="btn btn-primary">Add</button>
-        </div>
-        <div id="terms-list" class="terms-list"></div>
-        <div class="actions">
-          <button id="btn-back-upload" class="btn btn-secondary">← Back</button>
-          <button id="btn-find-matches" class="btn btn-primary" disabled>Find Matches →</button>
-        </div>
-      </div>
-    </section>
+        <div id="file-pill-list" class="file-pill-list"></div>
 
-    <!-- Screen 3: Preview -->
-    <section id="screen-preview" class="screen">
-      <div class="preview-layout">
-        <aside class="sidebar">
-          <div class="sidebar-header">
-            <h3>Matches</h3>
-            <div class="match-summary">
-              <span id="match-count">0 found</span>
-              <span id="selected-count"> · 0 selected</span>
-            </div>
-            <div class="sidebar-actions">
-              <button id="btn-select-all" class="btn btn-sm">Select All</button>
-              <button id="btn-deselect-all" class="btn btn-sm">Deselect All</button>
-            </div>
-          </div>
-          <div id="matches-list" class="matches-list"></div>
-        </aside>
-        <main class="canvas-area">
-          <div class="canvas-toolbar">
-            <div class="toolbar-group">
-              <button id="btn-prev-page" class="btn btn-sm">← Prev</button>
-              <span id="page-indicator" class="page-indicator">Page 1 / 1</span>
-              <button id="btn-next-page" class="btn btn-sm">Next →</button>
-            </div>
-            <div class="toolbar-group">
-              <span class="draw-hint">✏️ Drag / Touch to draw custom redactions</span>
-              <button id="btn-clear-manual" class="btn btn-sm btn-secondary" title="Clear hand-drawn boxes on current page">Clear Drawn</button>
-            </div>
-          </div>
-          <div id="canvas-container" class="canvas-container">
-            <canvas id="page-canvas"></canvas>
-          </div>
-        </main>
+        <button id="btn-start-workspace" class="btn btn-primary hidden" style="width: 100%; margin-top: 20px;">
+          Open Workspace →
+        </button>
       </div>
-      <div class="preview-actions">
-        <button id="btn-back-terms" class="btn btn-secondary">← Back to Terms</button>
-        <button id="btn-to-export" class="btn btn-primary">Continue to Export →</button>
-      </div>
-    </section>
+    </main>
 
-    <!-- Screen 4: Export -->
-    <section id="screen-export" class="screen">
-      <div class="container">
-        <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 20px;">Export Redacted PDF</h2>
-        <div id="export-summary" class="export-summary"></div>
-        <div id="export-progress" class="export-progress hidden">
+    <!-- Phase 2: Unified Workspace Screen -->
+    <main id="screen-workspace" class="hidden">
+      <!-- Sidebar Controls -->
+      <aside class="sidebar">
+        <div class="sidebar-tabs">
+          <button id="tab-auto" class="tab-btn active">1. Auto-Search</button>
+          <button id="tab-matches" class="tab-btn">2. Matches (<span id="match-count-badge">0</span>)</button>
+        </div>
+
+        <!-- Tab 1: Auto Search -->
+        <div id="tab-content-auto" class="tab-content">
+          <div>
+            <div class="section-title">Add Terms to Redact</div>
+            <div class="term-input-box">
+              <input type="text" id="term-input" placeholder="e.g. John Doe, SSN, confidential">
+              <button id="btn-add-term" class="btn btn-primary">Add</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">Quick Presets</div>
+            <div class="quick-chips">
+              <span class="chip" data-term="Name">Name</span>
+              <span class="chip" data-term="Email">Email</span>
+              <span class="chip" data-term="Phone">Phone</span>
+              <span class="chip" data-term="Address">Address</span>
+              <span class="chip" data-term="SSN">SSN</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">Active Terms</div>
+            <div id="active-terms-list" class="active-terms-list"></div>
+          </div>
+
+          <button id="btn-scan-matches" class="btn btn-primary" style="margin-top: auto;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Scan Document
+          </button>
+        </div>
+
+        <!-- Tab 2: Match Review -->
+        <div id="tab-content-matches" class="tab-content hidden">
+          <div class="matches-header">
+            <span class="section-title" style="margin:0;">Found Redactions</span>
+            <div>
+              <button id="btn-select-all" class="btn btn-ghost btn-sm">All</button>
+              <button id="btn-deselect-all" class="btn btn-ghost btn-sm">None</button>
+            </div>
+          </div>
+          <div id="matches-container" style="flex:1; overflow-y:auto;"></div>
+        </div>
+      </aside>
+
+      <!-- Main Canvas Canvas Area -->
+      <section class="main-canvas-area">
+        <div class="canvas-toolbar">
+          <div class="toolbar-group">
+            <button id="btn-prev-page" class="btn btn-secondary btn-sm">←</button>
+            <span id="page-indicator" class="page-indicator">Page 1 / 1</span>
+            <button id="btn-next-page" class="btn btn-secondary btn-sm">→</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span style="font-size: 11px; color: var(--text-muted); background: white; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color);">
+              ✏️ Drag box to manually redact
+            </span>
+            <button id="btn-clear-manual" class="btn btn-secondary btn-sm">Clear Page Drawn</button>
+          </div>
+        </div>
+
+        <div class="canvas-viewport">
+          <canvas id="page-canvas"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal Export Summary -->
+    <div id="export-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h3>Export Redacted Document</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Redactions will be permanently burned into a newly generated flat PDF image layer.
+        </p>
+
+        <div id="modal-summary-content"></div>
+
+        <div id="export-progress" class="hidden">
           <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
-          <p id="progress-text" class="progress-text">Processing page 1 of 1...</p>
+          <p id="progress-text" style="font-size: 12px; color: var(--text-muted); text-align: center;">Rendering page...</p>
         </div>
-        <div class="actions">
-          <button id="btn-back-preview" class="btn btn-secondary">← Back to Preview</button>
-          <button id="btn-download" class="btn btn-primary">Download Redacted PDF</button>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+          <button id="btn-close-modal" class="btn btn-secondary">Cancel</button>
+          <button id="btn-download" class="btn btn-primary">Download Flattened PDF</button>
         </div>
       </div>
-    </section>
-
-    <!-- Footer -->
-    <footer id="app-footer" class="hidden">
-      <p>🔒 All processing happens locally in your browser. No data is ever sent to any server.</p>
-    </footer>
+    </div>
   </div>
 
-  <!-- pdf-lib -->
+  <!-- Dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-
-  <!-- App -->
   <script type="module">
     import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
-    // ========== STATE ==========
+    // State
     const state = {
       files: [],
       searchTerms: [],
       matches: [],
-      manualRects: [], // { fileIndex, pageNumber, box: [minX, minY, maxX, maxY] } in PDF page space
-      currentScreen: 'upload',
+      manualRects: [],
       currentPage: 1,
       currentFileIndex: 0,
     };
 
-    // ========== DOM REFS ==========
     const $ = id => document.getElementById(id);
-    const screens = { upload: $('screen-upload'), terms: $('screen-terms'), preview: $('screen-preview'), export: $('screen-export') };
-    const dropZone = $('drop-zone');
-    const fileInput = $('file-input');
-    const fileList = $('file-list');
-    const btnToTerms = $('btn-to-terms');
-    const termInput = $('term-input');
-    const btnAddTerm = $('btn-add-term');
-    const termsList = $('terms-list');
-    const btnFindMatches = $('btn-find-matches');
-    const matchesList = $('matches-list');
-    const matchCount = $('match-count');
-    const selectedCount = $('selected-count');
-    const btnSelectAll = $('btn-select-all');
-    const btnDeselectAll = $('btn-deselect-all');
-    const btnPrevPage = $('btn-prev-page');
-    const btnNextPage = $('btn-next-page');
-    const btnClearManual = $('btn-clear-manual');
-    const pageIndicator = $('page-indicator');
-    const pageCanvas = $('page-canvas');
-    const exportSummary = $('export-summary');
-    const exportProgress = $('export-progress');
-    const progressFill = $('progress-fill');
-    const progressText = $('progress-text');
-    const btnDownload = $('btn-download');
 
-    // Drawing state
-    let isDrawing = false;
-    let drawStartPos = null;
-    let drawCurrentPos = null;
-    let activeViewport = null;
-
-    // ========== HELPERS ==========
     function showToast(msg) {
       const existing = document.querySelector('.toast');
       if (existing) existing.remove();
@@ -320,762 +643,353 @@
       toast.className = 'toast';
       toast.textContent = msg;
       document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3500);
+      setTimeout(() => toast.remove(), 3000);
     }
 
-    function switchScreen(name) {
-      Object.values(screens).forEach(s => s.classList.remove('active'));
-      screens[name].classList.add('active');
-      state.currentScreen = name;
-      const showHeader = name !== 'upload';
-      $('app-header').classList.toggle('hidden', !showHeader);
-      $('app-footer').classList.toggle('hidden', !showHeader);
-    }
-
-    function getTotalPages() {
-      return state.files.reduce((sum, f) => sum + f.numPages, 0);
-    }
-
-    function escapeRegex(str) {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
-
-    function isPdfBuffer(buffer) {
-      if (!buffer || buffer.byteLength < 4) return false;
-      const header = new Uint8Array(buffer, 0, 4);
-      return header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46; // %PDF
-    }
-
-    // ========== UPLOAD ==========
+    // File Handling
     async function handleFiles(files) {
-      if (!files || files.length === 0) return;
-      const fileArray = Array.from(files);
-
-      for (const file of fileArray) {
+      for (const file of Array.from(files)) {
         try {
           const buffer = await file.arrayBuffer();
-          if (!isPdfBuffer(buffer)) {
-            showToast(`"${file.name}" is not a valid PDF.`);
-            continue;
-          }
           const pdfProxy = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
           state.files.push({
             id: Math.random().toString(36).substring(2, 9),
             name: file.name || 'document.pdf',
-            pdfProxy: pdfProxy,
+            pdfProxy,
             numPages: pdfProxy.numPages,
             arrayBuffer: buffer
           });
-        } catch (err) {
-          console.error(err);
-          showToast(`Error loading "${file.name}": ${err.message || 'Invalid or protected PDF'}`);
+        } catch (e) {
+          showToast(`Error opening ${file.name}`);
         }
       }
-
       renderFileList();
-      btnToTerms.disabled = state.files.length === 0;
     }
 
     function renderFileList() {
-      fileList.innerHTML = '';
-      for (let i = 0; i < state.files.length; i++) {
-        const f = state.files[i];
+      const list = $('file-pill-list');
+      list.innerHTML = '';
+      state.files.forEach((f, idx) => {
         const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `
-          <div class="file-info">
-            <div class="file-icon">PDF</div>
-            <div>
-              <div class="file-name">${escapeHtml(f.name)}</div>
-              <div class="file-meta">${f.numPages} pages</div>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-danger btn-remove" data-index="${i}">Remove</button>
-        `;
-        fileList.appendChild(item);
-      }
-      fileList.querySelectorAll('.btn-remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const idx = parseInt(btn.dataset.index);
-          state.files.splice(idx, 1);
+        item.className = 'file-pill';
+        item.innerHTML = `<span><strong>${f.name}</strong> (${f.numPages} pages)</span>
+          <button style="background:none;border:none;color:var(--danger);cursor:pointer;font-weight:600;" data-idx="${idx}">✕</button>`;
+        list.appendChild(item);
+      });
+
+      list.querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', e => {
+          state.files.splice(parseInt(e.target.dataset.idx), 1);
           renderFileList();
-          btnToTerms.disabled = state.files.length === 0;
+        });
+      });
+
+      $('btn-start-workspace').classList.toggle('hidden', state.files.length === 0);
+    }
+
+    // App Navigation
+    $('btn-start-workspace').addEventListener('click', () => {
+      $('screen-upload').classList.add('hidden');
+      $('screen-workspace').classList.remove('hidden');
+      $('btn-open-export').classList.remove('hidden');
+      renderCurrentPage();
+      updateNav();
+    });
+
+    // Terms logic
+    function addTerm(text) {
+      const clean = text.trim();
+      if (!clean) return;
+      if (state.searchTerms.some(t => t.text.toLowerCase() === clean.toLowerCase())) return;
+      state.searchTerms.push({ id: Date.now(), text: clean });
+      renderTerms();
+      $('term-input').value = '';
+    }
+
+    function renderTerms() {
+      const container = $('active-terms-list');
+      container.innerHTML = '';
+      state.searchTerms.forEach(t => {
+        const tag = document.createElement('span');
+        tag.className = 'term-tag';
+        tag.innerHTML = `${t.text} <span class="remove-btn" data-id="${t.id}">×</span>`;
+        container.appendChild(tag);
+      });
+      container.querySelectorAll('.remove-btn').forEach(b => {
+        b.addEventListener('click', e => {
+          state.searchTerms = state.searchTerms.filter(t => t.id !== parseFloat(e.target.dataset.id));
+          renderTerms();
         });
       });
     }
 
-    dropZone.addEventListener('click', e => {
-      if (e.target.closest('label') || e.target.closest('input')) return;
-      fileInput.click();
+    $('btn-add-term').addEventListener('click', () => addTerm($('term-input').value));
+    $('term-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTerm($('term-input').value); });
+    document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => addTerm(c.dataset.term)));
+
+    // Tabs
+    $('tab-auto').addEventListener('click', () => {
+      $('tab-auto').classList.add('active'); $('tab-matches').classList.remove('active');
+      $('tab-content-auto').classList.remove('hidden'); $('tab-content-matches').classList.add('hidden');
+    });
+    $('tab-matches').addEventListener('click', () => {
+      $('tab-matches').classList.add('active'); $('tab-auto').classList.remove('active');
+      $('tab-content-matches').classList.remove('hidden'); $('tab-content-auto').classList.add('hidden');
     });
 
-    fileInput.addEventListener('change', async e => {
-      if (e.target.files && e.target.files.length > 0) {
-        await handleFiles(e.target.files);
-        e.target.value = '';
-      }
-    });
-
-    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', async e => {
-      e.preventDefault();
-      dropZone.classList.remove('drag-over');
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        await handleFiles(e.dataTransfer.files);
-      }
-    });
-
-    btnToTerms.addEventListener('click', () => {
-      if (state.files.length === 0) return;
-      switchScreen('terms');
-    });
-
-    // ========== TERMS ==========
-    function addTerm(text) {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      if (state.searchTerms.some(t => t.text.toLowerCase() === trimmed.toLowerCase())) {
-        showToast('Term already added.');
-        return;
-      }
-      state.searchTerms.push({ id: Date.now() + Math.random(), text: trimmed });
-      renderTerms();
-      termInput.value = '';
-      btnFindMatches.disabled = false;
-    }
-
-    function removeTerm(id) {
-      state.searchTerms = state.searchTerms.filter(t => t.id !== id);
-      renderTerms();
-      btnFindMatches.disabled = state.searchTerms.length === 0;
-    }
-
-    function renderTerms() {
-      termsList.innerHTML = '';
-      for (const term of state.searchTerms) {
-        const tag = document.createElement('span');
-        tag.className = 'term-tag';
-        tag.innerHTML = `${escapeHtml(term.text)} <span class="remove" data-id="${term.id}">×</span>`;
-        termsList.appendChild(tag);
-      }
-      termsList.querySelectorAll('.remove').forEach(btn => {
-        btn.addEventListener('click', () => removeTerm(parseFloat(btn.dataset.id)));
-      });
-    }
-
-    termInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTerm(termInput.value); });
-    btnAddTerm.addEventListener('click', () => addTerm(termInput.value));
-    document.querySelectorAll('.quick-term').forEach(btn => {
-      btn.addEventListener('click', () => addTerm(btn.dataset.term));
-    });
-
-    // ========== MATCH SCANNING ==========
-    async function extractPageText(fileIndex, pageNumber) {
-      const file = state.files[fileIndex];
-      const page = await file.pdfProxy.getPage(pageNumber);
-      const textContent = await page.getTextContent();
-      const viewport = page.getViewport({ scale: 1 });
-
-      const items = [];
-      for (const item of textContent.items) {
-        if (typeof item.str !== 'string' || item.str.length === 0) continue;
-        const tx = item.transform[4];
-        const ty = item.transform[5];
-        const fontSize = Math.hypot(item.transform[2], item.transform[3]) || 10;
-        const h = item.height || fontSize;
-        const w = item.width || (item.str.length * fontSize * 0.5);
-
-        items.push({ text: item.str, x: tx, y: ty, w, h });
-      }
-
-      items.sort((a, b) => {
-        if (Math.abs(a.y - b.y) > Math.max(a.h, b.h) * 0.5) {
-          return b.y - a.y;
-        }
-        return a.x - b.x;
-      });
-
-      let pageText = '';
-      const charMap = [];
-      let prevItem = null;
-
-      for (const item of items) {
-        if (prevItem) {
-          const sameLine = Math.abs(item.y - prevItem.y) <= Math.max(item.h, prevItem.h) * 0.5;
-          const xGap = item.x - (prevItem.x + prevItem.w);
-
-          if (!sameLine) {
-            pageText += '\n';
-            charMap.push(null);
-          } else if (xGap > item.h * 0.2 && !prevItem.text.endsWith(' ') && !item.text.startsWith(' ')) {
-            pageText += ' ';
-            charMap.push(null);
-          }
-        }
-
-        for (let i = 0; i < item.text.length; i++) {
-          charMap.push({ item, charIdx: i });
-          pageText += item.text[i];
-        }
-        prevItem = item;
-      }
-
-      return { text: pageText, charMap, viewport };
-    }
-
-    function computeSubItemBox(item, startIdx, endIdx) {
-      const ratioStart = startIdx / item.text.length;
-      const ratioEnd = (endIdx + 1) / item.text.length;
+    // Scan Text
+    $('btn-scan-matches').addEventListener('click', async () => {
+      if (state.searchTerms.length === 0) return showToast('Add at least one term first');
+      state.matches = [];
       
-      // Safety padding around text to prevent descenders/glyph edges from peeking
-      const padX = 3; 
-      const padY = item.h * 0.25;
+      for (let fi = 0; fi < state.files.length; fi++) {
+        const file = state.files[fi];
+        for (let pn = 1; pn <= file.numPages; pn++) {
+          const page = await file.pdfProxy.getPage(pn);
+          const textContent = await page.getTextContent();
+          let fullText = '';
+          const charMap = [];
 
-      const minX = item.x + item.w * ratioStart - padX;
-      const maxX = item.x + item.w * ratioEnd + padX;
-      const minY = item.y - padY;
-      const maxY = item.y + item.h + padY;
-      return [minX, minY, maxX, maxY];
-    }
-
-    function findMatchesOnPage(text, charMap, terms, fileIndex, pageNumber) {
-      const matches = [];
-      const lowerText = text.toLowerCase();
-
-      for (const termObj of terms) {
-        const term = termObj.text.trim();
-        if (!term) continue;
-
-        const regex = new RegExp(escapeRegex(term.toLowerCase()), 'g');
-        let match;
-
-        while ((match = regex.exec(lowerText)) !== null) {
-          const start = match.index;
-          const end = start + match[0].length;
-          if (match[0].length === 0) { regex.lastIndex++; continue; }
-
-          const boxes = [];
-          let currentItem = null;
-          let itemMinChar = Infinity;
-          let itemMaxChar = -Infinity;
-
-          for (let i = start; i < end; i++) {
-            const mapInfo = charMap[i];
-            if (!mapInfo) continue;
-
-            if (mapInfo.item !== currentItem) {
-              if (currentItem) {
-                boxes.push(computeSubItemBox(currentItem, itemMinChar, itemMaxChar));
-              }
-              currentItem = mapInfo.item;
-              itemMinChar = mapInfo.charIdx;
-              itemMaxChar = mapInfo.charIdx;
-            } else {
-              itemMaxChar = mapInfo.charIdx;
+          textContent.items.forEach(item => {
+            if (!item.str) return;
+            const fontSize = Math.hypot(item.transform[2], item.transform[3]) || 10;
+            const boxItem = { text: item.str, x: item.transform[4], y: item.transform[5], w: item.width || (item.str.length * fontSize * 0.5), h: item.height || fontSize };
+            for (let i = 0; i < item.str.length; i++) {
+              charMap.push({ item: boxItem, charIdx: i });
+              fullText += item.str[i];
             }
-          }
-          if (currentItem) {
-            boxes.push(computeSubItemBox(currentItem, itemMinChar, itemMaxChar));
-          }
+          });
 
-          if (boxes.length === 0) continue;
+          state.searchTerms.forEach(termObj => {
+            const regex = new RegExp(termObj.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            let m;
+            while ((m = regex.exec(fullText)) !== null) {
+              const start = m.index;
+              const end = start + m[0].length;
+              const boxes = [];
+              let curItem = null, minC = Infinity, maxC = -Infinity;
 
-          const ctxStart = Math.max(0, start - 40);
-          const ctxEnd = Math.min(text.length, end + 40);
-          const snippet = text.substring(ctxStart, ctxEnd).replace(/\n/g, ' ');
+              for (let i = start; i < end; i++) {
+                const info = charMap[i];
+                if (!info) continue;
+                if (info.item !== curItem) {
+                  if (curItem) {
+                    const r1 = minC / curItem.text.length, r2 = (maxC + 1) / curItem.text.length;
+                    boxes.push([curItem.x + curItem.w * r1 - 2, curItem.y - curItem.h * 0.2, curItem.x + curItem.w * r2 + 2, curItem.y + curItem.h * 1.2]);
+                  }
+                  curItem = info.item; minC = info.charIdx; maxC = info.charIdx;
+                } else maxC = info.charIdx;
+              }
+              if (curItem) {
+                const r1 = minC / curItem.text.length, r2 = (maxC + 1) / curItem.text.length;
+                boxes.push([curItem.x + curItem.w * r1 - 2, curItem.y - curItem.h * 0.2, curItem.x + curItem.w * r2 + 2, curItem.y + curItem.h * 1.2]);
+              }
 
-          matches.push({
-            id: `${fileIndex}-${pageNumber}-${start}-${Math.random().toString(36).substring(2, 7)}`,
-            fileIndex,
-            pageNumber,
-            text: text.substring(start, end),
-            context: (ctxStart > 0 ? '...' : '') + snippet + (ctxEnd < text.length ? '...' : ''),
-            pdfBoxes: boxes,
-            selected: true
+              state.matches.push({
+                id: Math.random().toString(36).substring(2, 7),
+                fileIndex: fi, pageNumber: pn, text: m[0],
+                context: fullText.substring(Math.max(0, start - 20), Math.min(fullText.length, end + 20)),
+                pdfBoxes: boxes, selected: true
+              });
+            }
           });
         }
       }
-      return matches;
-    }
 
-    btnFindMatches.addEventListener('click', async () => {
-      if (state.searchTerms.length === 0) return;
-      btnFindMatches.disabled = true;
-      btnFindMatches.textContent = 'Scanning...';
-      state.matches = [];
-
-      try {
-        for (let fi = 0; fi < state.files.length; fi++) {
-          const file = state.files[fi];
-          for (let pn = 1; pn <= file.numPages; pn++) {
-            const { text, charMap } = await extractPageText(fi, pn);
-            if (!text || text.trim().length === 0) continue;
-            const pageMatches = findMatchesOnPage(text, charMap, state.searchTerms, fi, pn);
-            state.matches.push(...pageMatches);
-          }
-        }
-      } catch (err) {
-        showToast('Error scanning document: ' + err.message);
-        console.error(err);
-      }
-
-      btnFindMatches.disabled = false;
-      btnFindMatches.textContent = 'Find Matches →';
-
-      if (state.matches.length === 0) {
-        showToast('No auto-matches found. You can draw redactions manually.');
-      }
-
-      switchScreen('preview');
-      state.currentPage = 1;
-      state.currentFileIndex = 0;
+      $('match-count-badge').textContent = state.matches.length;
       renderMatchesList();
-      await renderCurrentPage();
-      updatePreviewNav();
+      renderCurrentPage();
+      $('tab-matches').click();
+      showToast(`Found ${state.matches.length} matches`);
     });
-
-    // ========== PREVIEW & CANVAS REDACTION ==========
-    function drawRedactionOverlays(ctx, viewport, matches, manualRects, isExport = false) {
-      // 1. Text Search Matches
-      for (const m of matches) {
-        if (!m.pdfBoxes) continue;
-        for (const box of m.pdfBoxes) {
-          const rect = viewport.convertToViewportRectangle(box);
-          const x = Math.min(rect[0], rect[2]);
-          const y = Math.min(rect[1], rect[3]);
-          const w = Math.abs(rect[2] - rect[0]);
-          const h = Math.abs(rect[3] - rect[1]);
-
-          if (isExport) {
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(x, y, w, h);
-          } else {
-            ctx.fillStyle = 'rgba(220, 38, 38, 0.45)';
-            ctx.fillRect(x, y, w, h);
-            ctx.strokeStyle = 'rgba(220, 38, 38, 0.9)';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(x, y, w, h);
-          }
-        }
-      }
-
-      // 2. Hand-Drawn Rectangles
-      for (const box of manualRects) {
-        const rect = viewport.convertToViewportRectangle(box);
-        const x = Math.min(rect[0], rect[2]);
-        const y = Math.min(rect[1], rect[3]);
-        const w = Math.abs(rect[2] - rect[0]);
-        const h = Math.abs(rect[3] - rect[1]);
-
-        if (isExport) {
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(x, y, w, h);
-        } else {
-          ctx.fillStyle = 'rgba(220, 38, 38, 0.55)';
-          ctx.fillRect(x, y, w, h);
-          ctx.strokeStyle = '#b91c1c';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(x, y, w, h);
-        }
-      }
-    }
 
     function renderMatchesList() {
-      matchesList.innerHTML = '';
-      const total = state.matches.length;
-      const selected = state.matches.filter(m => m.selected).length;
-      matchCount.textContent = `${total} found`;
-      selectedCount.textContent = ` · ${selected} selected`;
-
-      if (total === 0) {
-        matchesList.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--muted); font-size: 13px;">No auto-matches found.<br>Draw custom redactions directly on page!</div>';
-        return;
-      }
-
-      const groups = {};
-      for (const m of state.matches) {
-        const key = `${m.fileIndex}-${m.pageNumber}`;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(m);
-      }
-
-      for (const [key, matches] of Object.entries(groups)) {
-        const [fi, pn] = key.split('-').map(Number);
-        const groupHeader = document.createElement('div');
-        groupHeader.className = 'match-group-header';
-        groupHeader.textContent = `${state.files[fi].name} — Page ${pn}`;
-        matchesList.appendChild(groupHeader);
-
-        for (const m of matches) {
-          const item = document.createElement('div');
-          item.className = 'match-item';
-          item.dataset.matchId = m.id;
-          const contextHtml = escapeHtml(m.context).replace(new RegExp(escapeRegex(m.text), 'gi'), '<span class="highlight">$&</span>');
-
-          item.innerHTML = `
-            <input type="checkbox" ${m.selected ? 'checked' : ''} data-match-id="${m.id}">
-            <div class="match-content">
-              <div class="match-text">${escapeHtml(m.text)}</div>
-              <div class="match-context">${contextHtml}</div>
-            </div>
-          `;
-
-          item.addEventListener('click', e => {
-            if (e.target.tagName === 'INPUT') return;
-            state.currentFileIndex = m.fileIndex;
-            state.currentPage = m.pageNumber;
-            renderCurrentPage();
-            updatePreviewNav();
-          });
-
-          item.querySelector('input').addEventListener('change', e => {
-            m.selected = e.target.checked;
-            renderMatchesList();
-            renderCurrentPage();
-          });
-
-          matchesList.appendChild(item);
-        }
-      }
-    }
-
-    btnSelectAll.addEventListener('click', () => {
-      state.matches.forEach(m => m.selected = true);
-      renderMatchesList();
-      renderCurrentPage();
-    });
-
-    btnDeselectAll.addEventListener('click', () => {
-      state.matches.forEach(m => m.selected = false);
-      renderMatchesList();
-      renderCurrentPage();
-    });
-
-    btnClearManual.addEventListener('click', () => {
-      state.manualRects = state.manualRects.filter(
-        r => !(r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage)
-      );
-      renderCurrentPage();
-    });
-
-    async function renderCurrentPage() {
-      if (state.files.length === 0) return;
-      const file = state.files[state.currentFileIndex];
-      if (!file || !file.pdfProxy) return;
-
-      const page = await file.pdfProxy.getPage(state.currentPage);
-      const dpr = Math.max(window.devicePixelRatio || 1, 2);
-      const baseViewport = page.getViewport({ scale: 1.2 });
-      const viewport = page.getViewport({ scale: 1.2 * dpr });
-      activeViewport = viewport;
-
-      pageCanvas.width = viewport.width;
-      pageCanvas.height = viewport.height;
-      pageCanvas.style.width = `${baseViewport.width}px`;
-      pageCanvas.style.height = `${baseViewport.height}px`;
-
-      const ctx = pageCanvas.getContext('2d');
-      await page.render({ canvasContext: ctx, viewport }).promise;
-
-      const pageMatches = state.matches.filter(
-        m => m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage && m.selected
-      );
-
-      const pageManuals = state.manualRects
-        .filter(r => r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage)
-        .map(r => r.box);
-
-      drawRedactionOverlays(ctx, viewport, pageMatches, pageManuals, false);
-
-      // Render active live rectangle drag preview
-      if (isDrawing && drawStartPos && drawCurrentPos) {
-        const x = Math.min(drawStartPos.x, drawCurrentPos.x);
-        const y = Math.min(drawStartPos.y, drawCurrentPos.y);
-        const w = Math.abs(drawCurrentPos.x - drawStartPos.x);
-        const h = Math.abs(drawCurrentPos.y - drawStartPos.y);
-
-        ctx.fillStyle = 'rgba(37, 99, 235, 0.35)';
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, w, h);
-      }
-
-      document.querySelectorAll('.match-item').forEach(el => {
-        const m = state.matches.find(item => item.id === el.dataset.matchId);
-        el.classList.toggle('active', m && m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage);
+      const container = $('matches-container');
+      container.innerHTML = '';
+      state.matches.forEach(m => {
+        const item = document.createElement('div');
+        item.className = `match-item ${m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage ? 'active' : ''}`;
+        item.innerHTML = `
+          <input type="checkbox" ${m.selected ? 'checked' : ''}>
+          <div>
+            <div class="match-text">${m.text} (p. ${m.pageNumber})</div>
+            <div class="match-context">"${m.context}"</div>
+          </div>
+        `;
+        item.querySelector('input').addEventListener('change', e => {
+          m.selected = e.target.checked;
+          renderCurrentPage();
+        });
+        item.addEventListener('click', e => {
+          if (e.target.tagName === 'INPUT') return;
+          state.currentFileIndex = m.fileIndex;
+          state.currentPage = m.pageNumber;
+          renderCurrentPage();
+          updateNav();
+        });
+        container.appendChild(item);
       });
     }
 
-    // ========== ACCURATE PDF TRANSFORM CONVERSION ==========
-    function canvasRectToPdfBox(vp, minX, minY, maxX, maxY) {
-      if (typeof vp.convertToPdfRectangle === 'function') {
-        return vp.convertToPdfRectangle([minX, minY, maxX, maxY]);
-      }
-      // Fallback manual point conversion
-      if (typeof vp.convertToPdfPoint === 'function') {
-        const p1 = vp.convertToPdfPoint(minX, minY);
-        const p2 = vp.convertToPdfPoint(maxX, maxY);
-        return [
-          Math.min(p1[0], p2[0]),
-          Math.min(p1[1], p2[1]),
-          Math.max(p1[0], p2[0]),
-          Math.max(p1[1], p2[1])
-        ];
-      }
-      // Scale fallback
-      const p1x = minX / vp.scale;
-      const p1y = (vp.height - minY) / vp.scale;
-      const p2x = maxX / vp.scale;
-      const p2y = (vp.height - maxY) / vp.scale;
-      return [
-        Math.min(p1x, p2x),
-        Math.min(p1y, p2y),
-        Math.max(p1x, p2x),
-        Math.max(p1y, p2y)
-      ];
+    // Canvas Rendering & Drawing
+    let activeViewport = null;
+    async function renderCurrentPage() {
+      if (!state.files.length) return;
+      const file = state.files[state.currentFileIndex];
+      const page = await file.pdfProxy.getPage(state.currentPage);
+      
+      const canvas = $('page-canvas');
+      const dpr = Math.max(window.devicePixelRatio || 1, 2);
+      const baseVp = page.getViewport({ scale: 1.2 });
+      activeViewport = page.getViewport({ scale: 1.2 * dpr });
+
+      canvas.width = activeViewport.width;
+      canvas.height = activeViewport.height;
+      canvas.style.width = `${baseVp.width}px`;
+      canvas.style.height = `${baseVp.height}px`;
+
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport: activeViewport }).promise;
+
+      // Draw Highlights
+      const pageMatches = state.matches.filter(m => m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage && m.selected);
+      const pageManuals = state.manualRects.filter(r => r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage);
+
+      pageMatches.forEach(m => {
+        m.pdfBoxes.forEach(box => {
+          const rect = activeViewport.convertToViewportRectangle(box);
+          ctx.fillStyle = 'rgba(220, 38, 38, 0.4)';
+          ctx.fillRect(Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.abs(rect[2] - rect[0]), Math.abs(rect[3] - rect[1]));
+        });
+      });
+
+      pageManuals.forEach(r => {
+        const rect = activeViewport.convertToViewportRectangle(r.box);
+        ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+        ctx.fillRect(Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.abs(rect[2] - rect[0]), Math.abs(rect[3] - rect[1]));
+      });
     }
 
-    // ========== TOUCH / MOUSE DRAWING LOGIC ==========
-    function getCanvasCoordinates(e) {
-      const rect = pageCanvas.getBoundingClientRect();
-      let clientX = e.clientX;
-      let clientY = e.clientY;
+    // Manual Draw Interaction
+    let isDrawing = false, startPos = null;
+    const canvas = $('page-canvas');
 
-      if (e.touches && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else if (e.changedTouches && e.changedTouches.length > 0) {
-        clientX = e.changedTouches[0].clientX;
-        clientY = e.changedTouches[0].clientY;
-      }
-
-      const scaleX = pageCanvas.width / rect.width;
-      const scaleY = pageCanvas.height / rect.height;
-
-      return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
-      };
+    function getCoords(e) {
+      const r = canvas.getBoundingClientRect();
+      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+      return { x: cx * (canvas.width / r.width), y: cy * (canvas.height / r.height) };
     }
 
-    function startDrawing(e) {
-      if (!activeViewport) return;
-      if (e.cancelable && e.type === 'touchstart') {
-        e.preventDefault(); // Stop mobile synthetic mouse events
-      }
-      isDrawing = true;
-      drawStartPos = getCanvasCoordinates(e);
-      drawCurrentPos = drawStartPos;
-    }
-
-    function continueDrawing(e) {
-      if (!isDrawing) return;
-      if (e.cancelable) e.preventDefault(); // Prevent mobile screen scrolling
-      drawCurrentPos = getCanvasCoordinates(e);
-      renderCurrentPage();
-    }
-
-    function finishDrawing(e) {
+    canvas.addEventListener('mousedown', e => { isDrawing = true; startPos = getCoords(e); });
+    window.addEventListener('mouseup', e => {
       if (!isDrawing) return;
       isDrawing = false;
-
-      if (e) {
-        drawCurrentPos = getCanvasCoordinates(e);
+      const endPos = getCoords(e);
+      if (Math.abs(endPos.x - startPos.x) > 5 && activeViewport) {
+        const box = activeViewport.convertToPdfRectangle([
+          Math.min(startPos.x, endPos.x), Math.min(startPos.y, endPos.y),
+          Math.max(startPos.x, endPos.x), Math.max(startPos.y, endPos.y)
+        ]);
+        state.manualRects.push({ fileIndex: state.currentFileIndex, pageNumber: state.currentPage, box });
+        renderCurrentPage();
       }
+    });
 
-      if (drawStartPos && drawCurrentPos && activeViewport) {
-        const minCanvasX = Math.min(drawStartPos.x, drawCurrentPos.x);
-        const maxCanvasX = Math.max(drawStartPos.x, drawCurrentPos.x);
-        const minCanvasY = Math.min(drawStartPos.y, drawCurrentPos.y);
-        const maxCanvasY = Math.max(drawStartPos.y, drawCurrentPos.y);
-
-        // Filter out tiny accidental taps (> 5px threshold)
-        if (maxCanvasX - minCanvasX > 5 && maxCanvasY - minCanvasY > 5) {
-          const pdfBox = canvasRectToPdfBox(activeViewport, minCanvasX, minCanvasY, maxCanvasX, maxCanvasY);
-
-          state.manualRects.push({
-            fileIndex: state.currentFileIndex,
-            pageNumber: state.currentPage,
-            box: pdfBox
-          });
-        }
-      }
-
-      drawStartPos = null;
-      drawCurrentPos = null;
+    $('btn-clear-manual').addEventListener('click', () => {
+      state.manualRects = state.manualRects.filter(r => !(r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage));
       renderCurrentPage();
+    });
+
+    // Pagination
+    function updateNav() {
+      const f = state.files[state.currentFileIndex];
+      $('page-indicator').textContent = `Page ${state.currentPage} / ${f ? f.numPages : 1}`;
     }
 
-    // Attach Handlers (Mouse + Mobile Touch)
-    pageCanvas.addEventListener('mousedown', startDrawing);
-    window.addEventListener('mousemove', continueDrawing);
-    window.addEventListener('mouseup', finishDrawing);
-
-    pageCanvas.addEventListener('touchstart', startDrawing, { passive: false });
-    window.addEventListener('touchmove', continueDrawing, { passive: false });
-    window.addEventListener('touchend', finishDrawing);
-
-    function updatePreviewNav() {
-      if (state.files.length === 0) return;
-      const file = state.files[state.currentFileIndex];
-      if (!file) return;
-      pageIndicator.textContent = `Page ${state.currentPage} / ${file.numPages} (${file.name})`;
-      btnPrevPage.disabled = state.currentPage <= 1 && state.currentFileIndex === 0;
-      btnNextPage.disabled = state.currentPage >= file.numPages && state.currentFileIndex >= state.files.length - 1;
-    }
-
-    btnPrevPage.addEventListener('click', async () => {
-      if (state.currentPage > 1) {
-        state.currentPage--;
-      } else if (state.currentFileIndex > 0) {
-        state.currentFileIndex--;
-        state.currentPage = state.files[state.currentFileIndex].numPages;
-      }
-      await renderCurrentPage();
-      updatePreviewNav();
+    $('btn-prev-page').addEventListener('click', () => {
+      if (state.currentPage > 1) { state.currentPage--; renderCurrentPage(); updateNav(); }
+    });
+    $('btn-next-page').addEventListener('click', () => {
+      const f = state.files[state.currentFileIndex];
+      if (state.currentPage < f.numPages) { state.currentPage++; renderCurrentPage(); updateNav(); }
     });
 
-    btnNextPage.addEventListener('click', async () => {
-      const file = state.files[state.currentFileIndex];
-      if (state.currentPage < file.numPages) {
-        state.currentPage++;
-      } else if (state.currentFileIndex < state.files.length - 1) {
-        state.currentFileIndex++;
-        state.currentPage = 1;
-      }
-      await renderCurrentPage();
-      updatePreviewNav();
-    });
+    // Dropzone & File Loader Events
+    const dz = $('drop-zone');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+    $('file-input').addEventListener('change', e => handleFiles(e.target.files));
 
-    // ========== EXPORT ==========
-    btnDownload.addEventListener('click', async () => {
-      if (typeof PDFLib === 'undefined') {
-        showToast('PDF library failed to load.');
-        return;
-      }
-
-      const selected = state.matches.filter(m => m.selected);
-      if (selected.length === 0 && state.manualRects.length === 0) {
-        showToast('No redactions selected or drawn.');
-        return;
-      }
-
-      exportProgress.classList.remove('hidden');
-      btnDownload.disabled = true;
-      progressFill.style.width = '0%';
-      progressText.textContent = 'Preparing export...';
-
-      try {
-        const { PDFDocument } = PDFLib;
-        const pdfDoc = await PDFDocument.create();
-        const totalPages = getTotalPages();
-        let processed = 0;
-
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-
-        for (let fi = 0; fi < state.files.length; fi++) {
-          const file = state.files[fi];
-          for (let pn = 1; pn <= file.numPages; pn++) {
-            const page = await file.pdfProxy.getPage(pn);
-            const exportScale = 2.0; // High resolution output
-            const unscaledViewport = page.getViewport({ scale: 1 });
-            const viewport = page.getViewport({ scale: exportScale });
-
-            tempCanvas.width = viewport.width;
-            tempCanvas.height = viewport.height;
-
-            await page.render({ canvasContext: tempCtx, viewport }).promise;
-
-            const pageMatches = state.matches.filter(m => m.fileIndex === fi && m.pageNumber === pn && m.selected);
-            const pageManuals = state.manualRects
-              .filter(r => r.fileIndex === fi && r.pageNumber === pn)
-              .map(r => r.box);
-
-            // Permanently burn redactions as solid black into output PDF images
-            drawRedactionOverlays(tempCtx, viewport, pageMatches, pageManuals, true);
-
-            const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-            const pngBytes = await blob.arrayBuffer();
-            const pngImage = await pdfDoc.embedPng(pngBytes);
-
-            const pdfPage = pdfDoc.addPage([unscaledViewport.width, unscaledViewport.height]);
-            pdfPage.drawImage(pngImage, {
-              x: 0,
-              y: 0,
-              width: unscaledViewport.width,
-              height: unscaledViewport.height
-            });
-
-            processed++;
-            const pct = Math.round((processed / totalPages) * 100);
-            progressFill.style.width = pct + '%';
-            progressText.textContent = `Processing page ${processed} of ${totalPages}...`;
-            await new Promise(r => setTimeout(r, 10));
-          }
-        }
-
-        const pdfBytes = await pdfDoc.save();
-        const outputName = state.files.length === 1 
-          ? state.files[0].name.replace(/\.pdf$/i, '') + '-redacted.pdf' 
-          : 'redacted.pdf';
-
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = outputName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-        showToast('PDF exported successfully!');
-      } catch (err) {
-        console.error(err);
-        showToast('Export failed: ' + (err.message || 'Unknown error'));
-      } finally {
-        exportProgress.classList.add('hidden');
-        btnDownload.disabled = false;
-      }
-    });
-
-    // ========== NAVIGATION ==========
-    $('btn-back-upload').addEventListener('click', () => switchScreen('upload'));
-    $('btn-back-terms').addEventListener('click', () => switchScreen('terms'));
-    $('btn-back-preview').addEventListener('click', () => switchScreen('preview'));
-    $('btn-to-export').addEventListener('click', () => {
+    // Export Process Modal
+    $('btn-open-export').addEventListener('click', () => {
       const selected = state.matches.filter(m => m.selected).length;
-      const totalMatches = state.matches.length;
-      const manualCount = state.manualRects.length;
-
-      exportSummary.innerHTML = `
-        <h3>Export Summary</h3>
-        <div class="summary-row"><span class="label">Files</span><span class="value">${state.files.length}</span></div>
-        <div class="summary-row"><span class="label">Total pages</span><span class="value">${getTotalPages()}</span></div>
-        <div class="summary-row"><span class="label">Auto-matches selected</span><span class="value">${selected} of ${totalMatches}</span></div>
-        <div class="summary-row"><span class="label">Hand-drawn redactions</span><span class="value">${manualCount}</span></div>
-        <div class="summary-row"><span class="label">Output format</span><span class="value">Secure Flattened PDF</span></div>
+      $('modal-summary-content').innerHTML = `
+        <div class="summary-row"><span>Total Document Pages:</span> <strong>${state.files.reduce((a,b)=>a+b.numPages,0)}</strong></div>
+        <div class="summary-row"><span>Selected Auto-Redactions:</span> <strong>${selected}</strong></div>
+        <div class="summary-row"><span>Manual Redaction Regions:</span> <strong>${state.manualRects.length}</strong></div>
       `;
-      switchScreen('export');
+      $('export-modal').classList.remove('hidden');
     });
 
-    document.addEventListener('keydown', e => {
-      if (state.currentScreen === 'preview') {
-        if (e.key === 'ArrowLeft') btnPrevPage.click();
-        if (e.key === 'ArrowRight') btnNextPage.click();
+    $('btn-close-modal').addEventListener('click', () => $('export-modal').classList.add('hidden'));
+
+    $('btn-download').addEventListener('click', async () => {
+      $('export-progress').classList.remove('hidden');
+      const { PDFDocument } = PDFLib;
+      const pdfDoc = await PDFDocument.create();
+      
+      let processed = 0, total = state.files.reduce((a,b)=>a+b.numPages,0);
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+
+      for (let fi = 0; fi < state.files.length; fi++) {
+        const file = state.files[fi];
+        for (let pn = 1; pn <= file.numPages; pn++) {
+          const page = await file.pdfProxy.getPage(pn);
+          const vp = page.getViewport({ scale: 2.0 });
+          const unscaled = page.getViewport({ scale: 1.0 });
+
+          tempCanvas.width = vp.width; tempCanvas.height = vp.height;
+          await page.render({ canvasContext: tempCtx, viewport: vp }).promise;
+
+          // Burn Redactions as solid black
+          const pMatches = state.matches.filter(m => m.fileIndex === fi && m.pageNumber === pn && m.selected);
+          const pManuals = state.manualRects.filter(r => r.fileIndex === fi && r.pageNumber === pn);
+
+          tempCtx.fillStyle = '#000000';
+          pMatches.forEach(m => m.pdfBoxes.forEach(b => {
+            const r = vp.convertToViewportRectangle(b);
+            tempCtx.fillRect(Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.abs(r[2] - r[0]), Math.abs(r[3] - r[1]));
+          }));
+          pManuals.forEach(r => {
+            const rect = vp.convertToViewportRectangle(r.box);
+            tempCtx.fillRect(Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.abs(rect[2] - rect[0]), Math.abs(rect[3] - rect[1]));
+          });
+
+          const blob = await new Promise(res => tempCanvas.toBlob(res, 'image/png'));
+          const imgBytes = await blob.arrayBuffer();
+          const embeddedImg = await pdfDoc.embedPng(imgBytes);
+
+          const pdfPage = pdfDoc.addPage([unscaled.width, unscaled.height]);
+          pdfPage.drawImage(embeddedImg, { x: 0, y: 0, width: unscaled.width, height: unscaled.height });
+
+          processed++;
+          $('progress-fill').style.width = `${(processed/total)*100}%`;
+        }
       }
-    });
 
-    switchScreen('upload');
+      const bytes = await pdfDoc.save();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      a.download = 'redacted-document.pdf';
+      a.click();
+      
+      $('export-modal').classList.add('hidden');
+      $('export-progress').classList.add('hidden');
+      showToast('PDF Export Complete!');
+    });
   </script>
 </body>
 </html>
