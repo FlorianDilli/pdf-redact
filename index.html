@@ -105,7 +105,7 @@
       height: auto; 
       display: block; 
       cursor: crosshair; 
-      touch-action: none; /* Allows continuous touch drawing without page scroll */
+      touch-action: none; /* Disables default scroll touch action for seamless mobile drawing */
     }
 
     .preview-actions { padding: 12px 24px; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
@@ -223,7 +223,7 @@
               <button id="btn-next-page" class="btn btn-sm">Next →</button>
             </div>
             <div class="toolbar-group">
-              <span class="draw-hint">✏️ Drag/Touch page to redact custom areas</span>
+              <span class="draw-hint">✏️ Drag / Touch to draw custom redactions</span>
               <button id="btn-clear-manual" class="btn btn-sm btn-secondary" title="Clear hand-drawn boxes on current page">Clear Drawn</button>
             </div>
           </div>
@@ -273,7 +273,7 @@
       files: [],
       searchTerms: [],
       matches: [],
-      manualRects: [], // Array of { fileIndex, pageNumber, box: [minX, minY, maxX, maxY] } in PDF page space
+      manualRects: [], // { fileIndex, pageNumber, box: [minX, minY, maxX, maxY] } in PDF page space
       currentScreen: 'upload',
       currentPage: 1,
       currentFileIndex: 0,
@@ -534,7 +534,7 @@
       const ratioStart = startIdx / item.text.length;
       const ratioEnd = (endIdx + 1) / item.text.length;
       
-      // Pad out OCR boxes to prevent text edges/descenders from peeking out
+      // Safety padding around text to prevent descenders/glyph edges from peeking
       const padX = 3; 
       const padY = item.h * 0.25;
 
@@ -794,7 +794,7 @@
 
       drawRedactionOverlays(ctx, viewport, pageMatches, pageManuals, false);
 
-      // Active live drawing box preview
+      // Render active live rectangle drag preview
       if (isDrawing && drawStartPos && drawCurrentPos) {
         const x = Math.min(drawStartPos.x, drawCurrentPos.x);
         const y = Math.min(drawStartPos.y, drawCurrentPos.y);
@@ -814,11 +814,48 @@
       });
     }
 
+    // ========== ACCURATE PDF TRANSFORM CONVERSION ==========
+    function canvasRectToPdfBox(vp, minX, minY, maxX, maxY) {
+      if (typeof vp.convertToPdfRectangle === 'function') {
+        return vp.convertToPdfRectangle([minX, minY, maxX, maxY]);
+      }
+      // Fallback manual point conversion
+      if (typeof vp.convertToPdfPoint === 'function') {
+        const p1 = vp.convertToPdfPoint(minX, minY);
+        const p2 = vp.convertToPdfPoint(maxX, maxY);
+        return [
+          Math.min(p1[0], p2[0]),
+          Math.min(p1[1], p2[1]),
+          Math.max(p1[0], p2[0]),
+          Math.max(p1[1], p2[1])
+        ];
+      }
+      // Scale fallback
+      const p1x = minX / vp.scale;
+      const p1y = (vp.height - minY) / vp.scale;
+      const p2x = maxX / vp.scale;
+      const p2y = (vp.height - maxY) / vp.scale;
+      return [
+        Math.min(p1x, p2x),
+        Math.min(p1y, p2y),
+        Math.max(p1x, p2x),
+        Math.max(p1y, p2y)
+      ];
+    }
+
     // ========== TOUCH / MOUSE DRAWING LOGIC ==========
     function getCanvasCoordinates(e) {
       const rect = pageCanvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      let clientX = e.clientX;
+      let clientY = e.clientY;
+
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else if (e.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+      }
 
       const scaleX = pageCanvas.width / rect.width;
       const scaleY = pageCanvas.height / rect.height;
@@ -831,6 +868,9 @@
 
     function startDrawing(e) {
       if (!activeViewport) return;
+      if (e.cancelable && e.type === 'touchstart') {
+        e.preventDefault(); // Stop mobile synthetic mouse events
+      }
       isDrawing = true;
       drawStartPos = getCanvasCoordinates(e);
       drawCurrentPos = drawStartPos;
@@ -838,14 +878,18 @@
 
     function continueDrawing(e) {
       if (!isDrawing) return;
-      if (e.cancelable) e.preventDefault(); // Stop mobile page scrolling during drawing
+      if (e.cancelable) e.preventDefault(); // Prevent mobile screen scrolling
       drawCurrentPos = getCanvasCoordinates(e);
       renderCurrentPage();
     }
 
-    function finishDrawing() {
+    function finishDrawing(e) {
       if (!isDrawing) return;
       isDrawing = false;
+
+      if (e) {
+        drawCurrentPos = getCanvasCoordinates(e);
+      }
 
       if (drawStartPos && drawCurrentPos && activeViewport) {
         const minCanvasX = Math.min(drawStartPos.x, drawCurrentPos.x);
@@ -853,16 +897,9 @@
         const minCanvasY = Math.min(drawStartPos.y, drawCurrentPos.y);
         const maxCanvasY = Math.max(drawStartPos.y, drawCurrentPos.y);
 
-        // Ignore accidental micro-clicks
-        if (maxCanvasX - minCanvasX > 8 && maxCanvasY - minCanvasY > 8) {
-          const pdfBox = activeViewport.convertToPdfPoint
-            ? [
-                activeViewport.convertToPdfPoint(minCanvasX, minCanvasY)[0],
-                activeViewport.convertToPdfPoint(minCanvasX, maxCanvasY)[1],
-                activeViewport.convertToPdfPoint(maxCanvasX, minCanvasY)[0],
-                activeViewport.convertToPdfPoint(maxCanvasX, maxCanvasY)[1]
-              ]
-            : convertViewportToPdfBox(activeViewport, minCanvasX, minCanvasY, maxCanvasX, maxCanvasY);
+        // Filter out tiny accidental taps (> 5px threshold)
+        if (maxCanvasX - minCanvasX > 5 && maxCanvasY - minCanvasY > 5) {
+          const pdfBox = canvasRectToPdfBox(activeViewport, minCanvasX, minCanvasY, maxCanvasX, maxCanvasY);
 
           state.manualRects.push({
             fileIndex: state.currentFileIndex,
@@ -877,14 +914,7 @@
       renderCurrentPage();
     }
 
-    function convertViewportToPdfBox(vp, minX, minY, maxX, maxY) {
-      // Fallback pdf point calculation if convertToPdfPoint is unavailable
-      const [x1, y1] = [minX / vp.scale, (vp.height - minY) / vp.scale];
-      const [x2, y2] = [maxX / vp.scale, (vp.height - maxY) / vp.scale];
-      return [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
-    }
-
-    // Attach Drawing Listeners (Mouse + Mobile Touch)
+    // Attach Handlers (Mouse + Mobile Touch)
     pageCanvas.addEventListener('mousedown', startDrawing);
     window.addEventListener('mousemove', continueDrawing);
     window.addEventListener('mouseup', finishDrawing);
@@ -956,7 +986,7 @@
           const file = state.files[fi];
           for (let pn = 1; pn <= file.numPages; pn++) {
             const page = await file.pdfProxy.getPage(pn);
-            const exportScale = 2.0; // High resolution 144 DPI output
+            const exportScale = 2.0; // High resolution output
             const unscaledViewport = page.getViewport({ scale: 1 });
             const viewport = page.getViewport({ scale: exportScale });
 
@@ -970,6 +1000,7 @@
               .filter(r => r.fileIndex === fi && r.pageNumber === pn)
               .map(r => r.box);
 
+            // Permanently burn redactions as solid black into output PDF images
             drawRedactionOverlays(tempCtx, viewport, pageMatches, pageManuals, true);
 
             const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
