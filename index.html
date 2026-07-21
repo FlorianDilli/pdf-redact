@@ -271,7 +271,7 @@
       box-shadow: var(--shadow-md);
       border-radius: 2px;
       display: block;
-      touch-action: none; /* Controlled dynamically in JS for drawing vs scrolling */
+      touch-action: none; /* Disables page gestures on canvas for seamless touch drawing */
     }
 
     /* Sidebar / Mobile Bottom Sheet Drawer */
@@ -422,7 +422,7 @@
     .progress-bar { height: 6px; background: var(--border-light); border-radius: var(--radius-full); overflow: hidden; margin: 12px 0 6px; }
     .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
 
-    /* Toast */
+    /* Toast Notification */
     .toast {
       position: fixed;
       bottom: 20px;
@@ -440,7 +440,7 @@
 
     /* --- RESPONSIVE MOBILE STYLES (< 768px) --- */
     @media (max-width: 768px) {
-      .privacy-badge-text { display: none; } /* Hide redundant text on mobile header */
+      .privacy-badge-text { display: none; }
       
       #screen-workspace {
         flex-direction: column;
@@ -456,11 +456,11 @@
         border-left: none;
         border-top: 1px solid var(--border-color);
         box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
-        transform: translateY(calc(100% - 36px)); /* Collapse drawer down */
+        transform: translateY(calc(100% - 36px));
       }
 
       .sidebar.open {
-        transform: translateY(0); /* Slide drawer up */
+        transform: translateY(0);
       }
 
       .mobile-drawer-toggle {
@@ -534,7 +534,7 @@
           </div>
 
           <div class="toolbar-group">
-            <button id="btn-mode-toggle" class="btn btn-secondary btn-sm" title="Toggle Draw Mode">
+            <button id="btn-mode-toggle" class="btn btn-secondary btn-sm btn-toggle-active" title="Toggle Draw Mode">
               ✏️ <span class="hide-mobile">Draw Mode</span>
             </button>
             <button id="btn-clear-manual" class="btn btn-secondary btn-sm" title="Clear page drawings">
@@ -645,7 +645,7 @@
       manualRects: [],
       currentPage: 1,
       currentFileIndex: 0,
-      drawMode: true, // Enabled by default
+      drawMode: true,
     };
 
     const $ = id => document.getElementById(id);
@@ -824,6 +824,19 @@
       showToast(`Found ${state.matches.length} matches`);
     });
 
+    // ALL / NONE BULK CONTROLS FIXED HERE
+    $('btn-select-all').addEventListener('click', () => {
+      state.matches.forEach(m => m.selected = true);
+      renderMatchesList();
+      renderCurrentPage();
+    });
+
+    $('btn-deselect-all').addEventListener('click', () => {
+      state.matches.forEach(m => m.selected = false);
+      renderMatchesList();
+      renderCurrentPage();
+    });
+
     function renderMatchesList() {
       const container = $('matches-container');
       container.innerHTML = '';
@@ -852,7 +865,7 @@
       });
     }
 
-    // --- CANVAS ENGINE & DRAWING HANDLERS ---
+    // --- CANVAS ENGINE & BULLETPROOF POINTER DRAWING ---
     let activeViewport = null;
     const canvas = $('page-canvas');
 
@@ -864,7 +877,6 @@
       const dpr = Math.max(window.devicePixelRatio || 1, 2);
       const baseVp = page.getViewport({ scale: 1.0 });
       
-      // Auto-fit responsive scale on smaller screens
       const containerWidth = $('canvas-viewport').clientWidth - 32;
       const fitScale = Math.min(containerWidth / baseVp.width, 1.4);
       
@@ -898,14 +910,13 @@
       });
     }
 
-    // Touch & Mouse Drawing Logic
-    let isDrawing = false, startPos = null;
+    // Unified Mobile/Desktop Drag-Draw Engine
+    let isDrawing = false, startPos = null, canvasSnapshot = null;
 
     function getCoords(e) {
       const r = canvas.getBoundingClientRect();
-      const touch = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
-      const cx = touch.clientX - r.left;
-      const cy = touch.clientY - r.top;
+      const cx = e.clientX - r.left;
+      const cy = e.clientY - r.top;
       return { 
         x: cx * (canvas.width / r.width), 
         y: cy * (canvas.height / r.height) 
@@ -914,46 +925,62 @@
 
     function onPointerStart(e) {
       if (!state.drawMode) return;
-      if (e.cancelable) e.preventDefault(); // Stop mobile scroll when drawing
+      canvas.setPointerCapture(e.pointerId);
       isDrawing = true;
       startPos = getCoords(e);
+
+      // Snapshot clean canvas state for smooth drag preview
+      const ctx = canvas.getContext('2d');
+      canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     }
 
     function onPointerMove(e) {
-      if (!isDrawing) return;
-      if (e.cancelable) e.preventDefault();
+      if (!isDrawing || !canvasSnapshot) return;
+      const curPos = getCoords(e);
+      const ctx = canvas.getContext('2d');
+      
+      // Restore clean canvas & overlay live rectangle frame
+      ctx.putImageData(canvasSnapshot, 0, 0);
+      const x = Math.min(startPos.x, curPos.x);
+      const y = Math.min(startPos.y, curPos.y);
+      const w = Math.abs(curPos.x - startPos.x);
+      const h = Math.abs(curPos.y - startPos.y);
+
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.35)';
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 3;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
     }
 
     function onPointerEnd(e) {
       if (!isDrawing) return;
       isDrawing = false;
       const endPos = getCoords(e);
+
       if (Math.abs(endPos.x - startPos.x) > 8 && Math.abs(endPos.y - startPos.y) > 8 && activeViewport) {
         const box = activeViewport.convertToPdfRectangle([
           Math.min(startPos.x, endPos.x), Math.min(startPos.y, endPos.y),
           Math.max(startPos.x, endPos.x), Math.max(startPos.y, endPos.y)
         ]);
         state.manualRects.push({ fileIndex: state.currentFileIndex, pageNumber: state.currentPage, box });
-        renderCurrentPage();
       }
+      canvasSnapshot = null;
+      renderCurrentPage();
     }
 
-    // Attach Mouse Listeners
-    canvas.addEventListener('mousedown', onPointerStart);
-    window.addEventListener('mousemove', onPointerMove);
-    window.addEventListener('mouseup', onPointerEnd);
+    // Pointer Event Listeners
+    canvas.addEventListener('pointerdown', onPointerStart);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerEnd);
+    canvas.addEventListener('pointercancel', onPointerEnd);
 
-    // Attach Mobile Touch Listeners explicitly
-    canvas.addEventListener('touchstart', onPointerStart, { passive: false });
-    window.addEventListener('touchmove', onPointerMove, { passive: false });
-    window.addEventListener('touchend', onPointerEnd);
-
-    // Mode Toggle
+    // Mode Toggle Button
     $('btn-mode-toggle').addEventListener('click', () => {
       state.drawMode = !state.drawMode;
       $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
       canvas.style.touchAction = state.drawMode ? 'none' : 'auto';
-      showToast(state.drawMode ? 'Draw Mode Active' : 'Pan/Scroll Mode Active');
+      showToast(state.drawMode ? 'Draw Mode: ON' : 'Pan Mode: ON');
     });
 
     $('btn-clear-manual').addEventListener('click', () => {
@@ -961,7 +988,7 @@
       renderCurrentPage();
     });
 
-    // Pagination
+    // Pagination Controls
     function updateNav() {
       const f = state.files[state.currentFileIndex];
       $('page-indicator').textContent = `${state.currentPage} / ${f ? f.numPages : 1}`;
@@ -982,7 +1009,7 @@
     dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
     $('file-input').addEventListener('change', e => handleFiles(e.target.files));
 
-    // Export Modal Process
+    // Export Process
     $('btn-open-export').addEventListener('click', () => {
       const selected = state.matches.filter(m => m.selected).length;
       $('modal-summary-content').innerHTML = `
