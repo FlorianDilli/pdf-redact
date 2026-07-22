@@ -1001,29 +1001,43 @@
     // --- CANVAS ENGINE & DRAWING ---
     let activeViewport = null;
     const canvas = $('page-canvas');
+    let renderToken = 0;
+    let isPinching = false;
+    let lastTouchDist = null;
+
+    function getTouchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    }
 
     async function renderCurrentPage() {
+      const token = ++renderToken;
       if (!state.files.length) return;
       const file = state.files[state.currentFileIndex];
       const page = await file.pdfProxy.getPage(state.currentPage);
-      
+      if (token !== renderToken) return;
+
       const dpr = Math.max(window.devicePixelRatio || 1, 2);
       const baseVp = page.getViewport({ scale: 1.0 });
-      
+
       const containerWidth = $('canvas-viewport').clientWidth - 48;
       const fitScale = Math.min(containerWidth / baseVp.width, 1.4) * state.zoom;
-      state.baseScale = fitScale / state.zoom;
-      
       const displayVp = page.getViewport({ scale: fitScale });
       activeViewport = page.getViewport({ scale: fitScale * dpr });
 
-      canvas.width = activeViewport.width;
-      canvas.height = activeViewport.height;
-      canvas.style.width = `${displayVp.width}px`;
-      canvas.style.height = `${displayVp.height}px`;
+      canvas.width = Math.max(1, Math.round(activeViewport.width));
+      canvas.height = Math.max(1, Math.round(activeViewport.height));
+      canvas.style.width = `${Math.round(displayVp.width)}px`;
+      canvas.style.height = `${Math.round(displayVp.height)}px`;
+
+      if (token !== renderToken) return;
 
       const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvasContext: ctx, viewport: activeViewport }).promise;
+
+      if (token !== renderToken) return;
 
       // Draw Highlights
       const pageMatches = state.matches.filter(m => m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage && m.selected);
@@ -1045,13 +1059,13 @@
         ctx.fillRect(nx * canvas.width, ny * canvas.height, nw * canvas.width, nh * canvas.height);
       });
     }
-    
+
     function setZoom(newZoom) {
       state.zoom = Math.max(0.5, Math.min(5.0, newZoom));
       $('btn-zoom-reset').textContent = `${Math.round(state.zoom * 100)}%`;
       renderCurrentPage();
     }
-    
+
     function resetZoom() {
       state.zoom = 1.0;
       $('btn-zoom-reset').textContent = '100%';
@@ -1060,32 +1074,44 @@
 
     // Drag-Draw Pointer Engine
     let isDrawing = false, startPos = null, canvasSnapshot = null;
+    let isPanning = false, panStart = null, panScrollStart = null;
 
     function getCoords(e) {
       const r = canvas.getBoundingClientRect();
       const cx = e.clientX - r.left;
       const cy = e.clientY - r.top;
-      return { 
-        x: cx * (canvas.width / r.width), 
-        y: cy * (canvas.height / r.height) 
+      return {
+        x: cx * (canvas.width / r.width),
+        y: cy * (canvas.height / r.height)
       };
     }
 
     function onPointerStart(e) {
-      if (!state.drawMode) return;
-      canvas.setPointerCapture(e.pointerId);
-      isDrawing = true;
-      startPos = getCoords(e);
-
-      const ctx = canvas.getContext('2d');
-      canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (state.drawMode) {
+        canvas.setPointerCapture(e.pointerId);
+        isDrawing = true;
+        startPos = getCoords(e);
+        const ctx = canvas.getContext('2d');
+        canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      } else {
+        canvas.setPointerCapture(e.pointerId);
+        isPanning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+        panScrollStart = { x: $('canvas-viewport').scrollLeft, y: $('canvas-viewport').scrollTop };
+      }
     }
 
     function onPointerMove(e) {
+      if (isPanning) {
+        const vp = $('canvas-viewport');
+        vp.scrollLeft = panScrollStart.x - (e.clientX - panStart.x);
+        vp.scrollTop = panScrollStart.y - (e.clientY - panStart.y);
+        return;
+      }
       if (!isDrawing || !canvasSnapshot) return;
       const curPos = getCoords(e);
       const ctx = canvas.getContext('2d');
-      
+
       ctx.putImageData(canvasSnapshot, 0, 0);
       const x = Math.min(startPos.x, curPos.x);
       const y = Math.min(startPos.y, curPos.y);
@@ -1100,11 +1126,14 @@
     }
 
     function onPointerEnd(e) {
+      if (isPanning) {
+        isPanning = false;
+        return;
+      }
       if (!isDrawing) return;
       isDrawing = false;
       const endPos = getCoords(e);
 
-      // Store normalized coordinates
       const nx = Math.min(startPos.x, endPos.x) / canvas.width;
       const ny = Math.min(startPos.y, endPos.y) / canvas.height;
       const nw = Math.abs(endPos.x - startPos.x) / canvas.width;
@@ -1128,45 +1157,53 @@
     canvas.addEventListener('pointercancel', onPointerEnd);
 
     // Mode Toggle
-    canvas.style.touchAction = state.drawMode ? 'none' : 'pan-x pan-y pinch-zoom';
+    canvas.style.touchAction = state.drawMode ? 'none' : 'none';
     $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
-    
+
     $('btn-mode-toggle').addEventListener('click', () => {
       state.drawMode = !state.drawMode;
       $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
-      canvas.style.touchAction = state.drawMode ? 'none' : 'pan-x pan-y pinch-zoom';
+      canvas.style.touchAction = 'none';
       showToast(state.drawMode ? 'Draw Mode: ON' : 'Pan Mode: ON');
     });
 
     // Zoom Controls
-    $('btn-zoom-in').addEventListener('click', () => setZoom(state.zoom + 0.1));
-    $('btn-zoom-out').addEventListener('click', () => setZoom(state.zoom - 0.1));
+    $('btn-zoom-in').addEventListener('click', () => setZoom(state.zoom + 0.15));
+    $('btn-zoom-out').addEventListener('click', () => setZoom(state.zoom - 0.15));
     $('btn-zoom-reset').addEventListener('click', resetZoom);
-    
-    // Pinch-to-Zoom Support
-    canvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2 && !state.drawMode) {
+
+    const viewport = $('canvas-viewport');
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
         e.preventDefault();
-        lastTouchDist = getTouchDistance(e.touches);
-        lastTouchCenter = getTouchCenter(e.touches);
+        const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+        setZoom(state.zoom * factor);
       }
     }, { passive: false });
-    
+
+    // Pinch-to-Zoom Support
+    canvas.addEventListener('touchstart', (e) => {
+      if (!state.drawMode && e.touches.length === 2) {
+        isPinching = true;
+        lastTouchDist = getTouchDistance(e.touches);
+      }
+    }, { passive: true });
+
     canvas.addEventListener('touchmove', (e) => {
-      if (!state.drawMode && e.touches.length === 2 && lastTouchDist) {
+      if (!state.drawMode && isPinching && e.touches.length === 2) {
         e.preventDefault();
         const newDist = getTouchDistance(e.touches);
-        const scale = newDist / lastTouchDist;
-        setZoom(state.zoom * scale);
+        if (lastTouchDist > 0) {
+          const scale = newDist / lastTouchDist;
+          setZoom(state.zoom * scale);
+        }
         lastTouchDist = newDist;
       }
     }, { passive: false });
-    
-    canvas.addEventListener('touchend', (e) => {
-      if (!state.drawMode && e.touches.length < 2) {
-        lastTouchDist = null;
-        lastTouchCenter = null;
-      }
+
+    canvas.addEventListener('touchend', () => {
+      isPinching = false;
+      lastTouchDist = null;
     });
 
     $('btn-clear-manual').addEventListener('click', () => {
