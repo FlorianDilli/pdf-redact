@@ -5,49 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PDF Redactor — Private In-Browser Redaction</title>
 
-  <!-- Inter Font -->
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --bg-app: #f1f5f9;
+      --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      
+      --bg-app: #f3f3f5;
       --surface-card: #ffffff;
-      --header-bg: #0f172a;
+      --surface-subtle: #eaeaea;
+      --surface-dark: #0f1115;
       
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --primary-light: #eff6ff;
+      --primary: #0f1115;
+      --primary-hover: #262930;
       
-      --danger: #dc2626;
-      --danger-light: #fef2f2;
-      --danger-border: #fca5a5;
+      --accent-coral: #ff4d2d;
+      --accent-coral-hover: #e03e20;
+      --accent-coral-light: #fff0ed;
+      
+      --accent-green: #10b981;
+      --accent-green-bg: #e6f7f0;
 
-      --text-main: #0f172a;
-      --text-muted: #64748b;
+      --text-main: #0f1115;
+      --text-muted: #6e737d;
       --text-inverse: #ffffff;
       
-      --border-color: #cbd5e1;
-      --border-light: #e2e8f0;
+      --border-light: rgba(0, 0, 0, 0.08);
+      --border-strong: #0f1115;
       
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 16px;
-      --radius-full: 9999px;
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-pill: 9999px;
 
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+      --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.04);
+      --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.03);
+      --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.12);
     }
 
     html, body {
       height: 100%;
       width: 100%;
-      font-family: var(--font-main);
+      font-family: var(--font-body);
       background-color: var(--bg-app);
       color: var(--text-main);
       overflow: hidden;
@@ -64,12 +69,12 @@
       overflow: hidden;
     }
 
-    /* --- TOP HEADER --- */
+    /* --- TOP NAVIGATION BAR --- */
     header {
-      background: var(--header-bg);
-      color: var(--text-inverse);
-      height: 52px;
-      padding: 0 16px;
+      background: var(--surface-card);
+      border-bottom: 1px solid var(--border-light);
+      height: 64px;
+      padding: 0 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -80,14 +85,14 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .brand-logo {
-      width: 26px;
-      height: 26px;
-      background: var(--primary);
-      border-radius: var(--radius-sm);
+      width: 34px;
+      height: 34px;
+      background: var(--surface-dark);
+      border-radius: var(--radius-pill);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -96,119 +101,190 @@
     }
 
     .brand h1 {
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      white-space: nowrap;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
     }
 
     .privacy-badge {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 500;
-      background: rgba(34, 197, 94, 0.15);
-      color: #4ade80;
-      border: 1px solid rgba(74, 222, 128, 0.25);
-      padding: 3px 8px;
-      border-radius: var(--radius-full);
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--accent-green-bg);
+      color: var(--accent-green);
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
       white-space: nowrap;
     }
 
-    /* Buttons */
+    /* --- BUTTON STYLES --- */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 7px 14px;
-      border-radius: var(--radius-sm);
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-display);
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 700;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       border: 1px solid transparent;
       outline: none;
       white-space: nowrap;
       user-select: none;
     }
 
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
-    .btn-secondary { background: var(--surface-card); color: var(--text-main); border-color: var(--border-color); }
-    .btn-secondary:hover:not(:disabled) { background: var(--bg-app); }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    
+    .btn-primary { background: var(--surface-dark); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); box-shadow: var(--shadow-card); }
+    
+    .btn-accent { background: var(--accent-coral); color: white; }
+    .btn-accent:hover:not(:disabled) { background: var(--accent-coral-hover); box-shadow: 0 8px 20px rgba(255, 77, 45, 0.3); }
+
+    .btn-secondary { background: var(--surface-card); color: var(--text-main); border-color: var(--border-light); }
+    .btn-secondary:hover:not(:disabled) { background: var(--surface-subtle); }
+    
     .btn-ghost { background: transparent; color: var(--text-muted); }
-    .btn-ghost:hover:not(:disabled) { background: rgba(0,0,0,0.05); color: var(--text-main); }
-    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface-subtle); color: var(--text-main); }
+    
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
 
     .btn-toggle-active {
-      background: #fef2f2 !important;
-      color: var(--danger) !important;
-      border-color: var(--danger-border) !important;
+      background: var(--accent-coral-light) !important;
+      color: var(--accent-coral) !important;
+      border-color: rgba(255, 77, 45, 0.3) !important;
     }
 
-    /* --- SCREEN 1: UPLOAD HERO --- */
+    /* --- SCREEN 1: BENTO HERO UPLOAD --- */
     #screen-upload {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 32px 20px;
       overflow-y: auto;
     }
 
-    .upload-card {
-      max-width: 480px;
+    .hero-container {
+      max-width: 960px;
       width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .hero-header {
+      text-align: center;
+      max-width: 580px;
+      margin: 0 auto;
+    }
+
+    .tag-pill {
+      display: inline-block;
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: var(--surface-subtle);
+      color: var(--text-muted);
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      margin-bottom: 12px;
+    }
+
+    .hero-header h2 {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .hero-header p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Bento Grid Layout */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 20px;
+    }
+
+    .bento-card {
       background: var(--surface-card);
       border-radius: var(--radius-lg);
+      padding: 28px;
       border: 1px solid var(--border-light);
-      box-shadow: var(--shadow-lg);
-      padding: 32px 24px;
-      text-align: center;
-    }
-
-    .upload-icon {
-      width: 56px;
-      height: 56px;
-      background: var(--primary-light);
-      color: var(--primary);
-      border-radius: 50%;
+      box-shadow: var(--shadow-card);
       display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
     }
 
-    .upload-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-    .upload-card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; }
+    .bento-card-dark {
+      background: var(--surface-dark);
+      color: white;
+      border-color: var(--surface-dark);
+    }
 
     .drop-zone {
-      border: 2px dashed var(--border-color);
+      border: 2px dashed var(--border-light);
       border-radius: var(--radius-md);
-      padding: 28px 16px;
+      padding: 36px 20px;
       background: var(--bg-app);
+      text-align: center;
       transition: all 0.2s ease;
       cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
     }
 
     .drop-zone:hover, .drop-zone.drag-over {
-      border-color: var(--primary);
-      background: var(--primary-light);
+      border-color: var(--accent-coral);
+      background: var(--accent-coral-light);
     }
 
-    .file-pill-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+    .drop-zone-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--surface-card);
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-card);
+      color: var(--accent-coral);
+    }
+
+    .file-pill-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
     .file-pill {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
+      padding: 10px 16px;
       background: var(--surface-card);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      font-size: 12px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      font-weight: 500;
     }
 
     /* --- SCREEN 2: WORKSPACE --- */
@@ -217,234 +293,262 @@
       display: flex;
       overflow: hidden;
       position: relative;
+      background: var(--bg-app);
     }
 
-    /* Main PDF Viewport Area */
+    /* Canvas Viewport Area */
     .main-canvas-area {
       flex: 1;
       display: flex;
       flex-direction: column;
-      background: #cbd5e1;
       overflow: hidden;
       position: relative;
+      padding: 16px;
+      gap: 12px;
     }
 
+    /* Floating Canvas Toolbar */
     .canvas-toolbar {
-      height: 44px;
+      height: 52px;
       background: var(--surface-card);
-      border-bottom: 1px solid var(--border-color);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-pill);
+      box-shadow: var(--shadow-card);
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 12px;
       z-index: 10;
       flex-shrink: 0;
-      gap: 6px;
     }
 
     .toolbar-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
     .page-indicator {
-      font-size: 12px;
-      font-weight: 600;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
       color: var(--text-main);
-      padding: 0 4px;
-      white-space: nowrap;
+      padding: 0 8px;
     }
 
     .canvas-viewport {
       flex: 1;
       overflow: auto;
-      padding: 16px;
+      padding: 24px;
       display: flex;
       justify-content: center;
       align-items: flex-start;
       -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px dashed var(--border-light);
     }
 
     #page-canvas {
       background: white;
-      box-shadow: var(--shadow-md);
-      border-radius: 2px;
+      box-shadow: var(--shadow-float);
+      border-radius: var(--radius-sm);
       display: block;
       touch-action: none;
     }
 
-    /* Sidebar / Mobile Bottom Sheet Drawer */
+    /* Workspace Sidebar Controls */
     .sidebar {
-      width: 340px;
+      width: 360px;
       background: var(--surface-card);
-      border-left: 1px solid var(--border-color);
+      border-left: 1px solid var(--border-light);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
       z-index: 20;
-      transition: transform 0.25s ease;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .sidebar-tabs {
       display: flex;
+      padding: 12px 16px 0;
+      gap: 8px;
       border-bottom: 1px solid var(--border-light);
-      background: var(--bg-app);
+      background: var(--surface-card);
       flex-shrink: 0;
     }
 
     .tab-btn {
       flex: 1;
       padding: 10px;
+      font-family: var(--font-display);
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 700;
       color: var(--text-muted);
       border: none;
       background: none;
       cursor: pointer;
-      border-bottom: 2px solid transparent;
+      border-bottom: 3px solid transparent;
+      border-top-left-radius: var(--radius-sm);
+      border-top-right-radius: var(--radius-sm);
+      transition: all 0.2s;
     }
 
     .tab-btn.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-      background: var(--surface-card);
-      font-weight: 600;
+      color: var(--accent-coral);
+      border-bottom-color: var(--accent-coral);
+      background: var(--accent-coral-light);
     }
 
     .tab-content {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 20px;
     }
 
     .section-title {
+      font-family: var(--font-display);
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
-    .term-input-box { display: flex; gap: 6px; }
+    .term-input-box { display: flex; gap: 8px; }
     .term-input-box input {
       flex: 1;
-      padding: 7px 10px;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      font-size: 12px;
-      outline: none;
-    }
-    .term-input-box input:focus { border-color: var(--primary); }
-
-    .quick-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-    .chip {
-      padding: 3px 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--border-light);
       background: var(--bg-app);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-full);
-      font-size: 11px;
-      cursor: pointer;
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
     }
-    .chip:hover { border-color: var(--primary); color: var(--primary); }
+    .term-input-box input:focus { border-color: var(--surface-dark); background: white; }
 
-    .active-terms-list { display: flex; flex-wrap: wrap; gap: 4px; min-height: 28px; }
+    .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 5px 12px;
+      background: var(--bg-app);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--surface-dark); background: var(--surface-dark); color: white; }
+
+    .active-terms-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; }
     .term-tag {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
-      background: var(--primary-light);
-      color: var(--primary);
-      border-radius: var(--radius-full);
-      font-size: 11px;
-      font-weight: 500;
+      gap: 6px;
+      padding: 5px 12px;
+      background: var(--surface-dark);
+      color: white;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 600;
     }
-    .term-tag .remove-btn { cursor: pointer; font-size: 13px; }
+    .term-tag .remove-btn { cursor: pointer; font-size: 14px; opacity: 0.7; }
+    .term-tag .remove-btn:hover { opacity: 1; }
 
     .match-item {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
-      padding: 8px;
+      gap: 12px;
+      padding: 12px;
       border: 1px solid var(--border-light);
-      border-radius: var(--radius-sm);
-      margin-bottom: 6px;
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
       cursor: pointer;
+      transition: all 0.15s;
+      background: white;
     }
-    .match-item.active { border-color: var(--primary); background: var(--primary-light); }
-    .match-text { font-size: 12px; font-weight: 600; color: var(--danger); }
-    .match-context { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .match-item:hover { border-color: var(--surface-dark); }
+    .match-item.active { border-color: var(--accent-coral); background: var(--accent-coral-light); }
+    .match-text { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--accent-coral); }
+    .match-context { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
-    /* Mobile Sheet Drawer Controls */
+    /* Mobile Sheet Controls */
     .mobile-drawer-toggle {
       display: none;
-      height: 36px;
+      height: 48px;
       background: var(--surface-card);
-      border-top: 1px solid var(--border-color);
+      border-top: 1px solid var(--border-light);
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
-      font-size: 12px;
-      font-weight: 600;
+      padding: 0 20px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
       cursor: pointer;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.05);
     }
 
-    /* Modal Styling */
+    /* MODALS */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(2px);
+      background: rgba(15, 17, 21, 0.6);
+      backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 100;
-      padding: 16px;
+      padding: 20px;
     }
 
     .modal-card {
       background: var(--surface-card);
       border-radius: var(--radius-lg);
-      max-width: 420px;
+      max-width: 440px;
       width: 100%;
-      padding: 24px;
-      box-shadow: var(--shadow-lg);
+      padding: 28px;
+      box-shadow: var(--shadow-float);
     }
 
-    .modal-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
-    .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border-light); font-size: 12px; }
+    .modal-card h3 { font-family: var(--font-display); font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 13px; }
 
-    .progress-bar { height: 6px; background: var(--border-light); border-radius: var(--radius-full); overflow: hidden; margin: 12px 0 6px; }
-    .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+    .progress-bar { height: 8px; background: var(--bg-app); border-radius: var(--radius-pill); overflow: hidden; margin: 16px 0 8px; }
+    .progress-fill { height: 100%; background: var(--accent-coral); width: 0%; transition: width 0.2s; }
 
-    /* Toast Notification */
+    /* Toast Notifications */
     .toast {
       position: fixed;
-      bottom: 20px;
+      bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
-      background: var(--header-bg);
+      background: var(--surface-dark);
       color: white;
-      padding: 8px 16px;
-      border-radius: var(--radius-full);
-      font-size: 12px;
-      box-shadow: var(--shadow-lg);
+      padding: 10px 20px;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-float);
       z-index: 1000;
       white-space: nowrap;
     }
 
-    /* --- RESPONSIVE MOBILE STYLES (< 768px) --- */
+    /* --- MOBILE RESPONSIVENESS (< 768px) --- */
     @media (max-width: 768px) {
+      header { padding: 0 16px; }
       .privacy-badge-text { display: none; }
       
-      #screen-workspace {
-        flex-direction: column;
-      }
+      .bento-grid { grid-template-columns: 1fr; }
+      .hero-header h2 { font-size: 28px; }
+
+      #screen-workspace { flex-direction: column; }
+      .main-canvas-area { padding: 10px; }
 
       .sidebar {
         position: absolute;
@@ -452,25 +556,16 @@
         left: 0;
         right: 0;
         width: 100%;
-        height: 50vh;
+        height: 55vh;
         border-left: none;
-        border-top: 1px solid var(--border-color);
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
-        transform: translateY(calc(100% - 36px));
+        border-top-left-radius: var(--radius-lg);
+        border-top-right-radius: var(--radius-lg);
+        box-shadow: var(--shadow-float);
+        transform: translateY(calc(100% - 48px));
       }
 
-      .sidebar.open {
-        transform: translateY(0);
-      }
-
-      .mobile-drawer-toggle {
-        display: flex;
-      }
-
-      .canvas-toolbar {
-        padding: 0 8px;
-      }
-
+      .sidebar.open { transform: translateY(0); }
+      .mobile-drawer-toggle { display: flex; }
       .hide-mobile { display: none !important; }
     }
   </style>
@@ -478,53 +573,82 @@
 <body>
 
   <div id="app-container">
-    <!-- Header -->
+    <!-- Navigation Header -->
     <header>
       <div class="brand">
         <div class="brand-logo">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <h1>PDF Redactor</h1>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
         <span class="privacy-badge">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
           <span class="privacy-badge-text">100% In-Browser Privacy</span>
         </span>
-        <button id="btn-open-export" class="btn btn-primary btn-sm hidden">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Export</span>
+        <button id="btn-open-export" class="btn btn-accent btn-sm hidden">
+          <span>Export Document</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
         </button>
       </div>
     </header>
 
-    <!-- Phase 1: Upload Hero Screen -->
+    <!-- Phase 1: Upload Hero Screen (Bento Layout) -->
     <main id="screen-upload">
-      <div class="upload-card">
-        <div class="upload-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        </div>
-        <h2>Private Redaction</h2>
-        <p>Black out text securely inside your browser. No files are uploaded to any cloud server.</p>
-
-        <div id="drop-zone" class="drop-zone">
-          <p style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">Drag & drop PDF here</p>
-          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">or choose file from device</p>
-          <label for="file-input" class="btn btn-primary btn-sm">Browse PDF</label>
-          <input type="file" id="file-input" accept="application/pdf,.pdf" multiple style="display: none;">
+      <div class="hero-container">
+        <div class="hero-header">
+          <span class="tag-pill">Client-Side Security</span>
+          <h2>Redact sensitive PDFs with total privacy.</h2>
+          <p>Black out personal info, numbers, and text permanently in your browser. Zero cloud uploads.</p>
         </div>
 
-        <div id="file-pill-list" class="file-pill-list"></div>
+        <div class="bento-grid">
+          <!-- Bento Main Box: Upload -->
+          <div class="bento-card">
+            <div>
+              <div class="section-title">Upload Document</div>
+              <div id="drop-zone" class="drop-zone">
+                <div class="drop-zone-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </div>
+                <div>
+                  <p style="font-family: var(--font-display); font-weight: 700; font-size: 14px;">Drag & drop PDF here</p>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">or browse from your device</p>
+                </div>
+                <label for="file-input" class="btn btn-primary btn-sm" style="margin-top: 4px;">Choose File</label>
+                <input type="file" id="file-input" accept="application/pdf,.pdf" multiple style="display: none;">
+              </div>
+            </div>
 
-        <button id="btn-start-workspace" class="btn btn-primary hidden" style="width: 100%; margin-top: 16px;">
-          Open Document →
-        </button>
+            <div id="file-pill-list" class="file-pill-list"></div>
+
+            <button id="btn-start-workspace" class="btn btn-accent hidden" style="width: 100%; margin-top: 16px;">
+              Open Workspace →
+            </button>
+          </div>
+
+          <!-- Bento Card Right: Privacy Guarantee -->
+          <div class="bento-card bento-card-dark">
+            <div>
+              <span class="tag-pill" style="background: rgba(255,255,255,0.15); color: white;">Zero Storage</span>
+              <h3 style="font-family: var(--font-display); font-size: 22px; font-weight: 800; margin: 12px 0 8px; line-height: 1.25;">
+                Your files never leave your computer.
+              </h3>
+              <p style="font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.5;">
+                Processing is 100% local. Redacted areas are permanently burned into flattened images, rendering data recovery impossible.
+              </p>
+            </div>
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; font-weight: 600; color: var(--accent-coral);">
+              ✓ High-grade pixel-flattened PDF engine
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
     <!-- Phase 2: Unified Workspace Screen -->
     <main id="screen-workspace" class="hidden">
-      <!-- Main Canvas Viewport -->
+      <!-- Main Canvas Viewport Area -->
       <section class="main-canvas-area">
         <div class="canvas-toolbar">
           <div class="toolbar-group">
@@ -548,16 +672,16 @@
         </div>
       </section>
 
-      <!-- Sidebar Controls / Mobile Slide-up Drawer -->
+      <!-- Sidebar Controls / Mobile Bottom Sheet -->
       <aside id="sidebar" class="sidebar">
-        <!-- Mobile Drawer Header Handle -->
+        <!-- Mobile Bottom Drawer Header Handle -->
         <div id="drawer-toggle" class="mobile-drawer-toggle">
           <span id="drawer-title">🔍 Search Terms & Controls</span>
           <span id="drawer-arrow">▲</span>
         </div>
 
         <div class="sidebar-tabs">
-          <button id="tab-auto" class="tab-btn active">1. Auto-Search</button>
+          <button id="tab-auto" class="tab-btn active">1. Auto Search</button>
           <button id="tab-matches" class="tab-btn">2. Matches (<span id="match-count-badge">0</span>)</button>
         </div>
 
@@ -572,7 +696,7 @@
           </div>
 
           <div>
-            <div class="section-title">Presets</div>
+            <div class="section-title">Quick Presets</div>
             <div class="quick-chips">
               <span class="chip" data-term="Name">Name</span>
               <span class="chip" data-term="Email">Email</span>
@@ -583,12 +707,12 @@
           </div>
 
           <div>
-            <div class="section-title">Active Terms</div>
+            <div class="section-title">Active Target Terms</div>
             <div id="active-terms-list" class="active-terms-list"></div>
           </div>
 
-          <button id="btn-scan-matches" class="btn btn-primary" style="margin-top: auto; width: 100%;">
-            Scan PDF
+          <button id="btn-scan-matches" class="btn btn-accent" style="margin-top: auto; width: 100%;">
+            Scan PDF Document
           </button>
         </div>
 
@@ -610,20 +734,20 @@
     <div id="export-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <h3>Export Redacted PDF</h3>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-          All marked regions will be burned permanently into flat page images.
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          All marked regions will be burned permanently into flattened page images.
         </p>
 
         <div id="modal-summary-content"></div>
 
         <div id="export-progress" class="hidden">
           <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
-          <p id="progress-text" style="font-size: 11px; color: var(--text-muted); text-align: center;">Rendering page...</p>
+          <p id="progress-text" style="font-size: 12px; color: var(--text-muted); text-align: center;">Rendering page...</p>
         </div>
 
-        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
           <button id="btn-close-modal" class="btn btn-secondary btn-sm">Cancel</button>
-          <button id="btn-download" class="btn btn-primary btn-sm">Download PDF</button>
+          <button id="btn-download" class="btn btn-accent btn-sm">Download PDF</button>
         </div>
       </div>
     </div>
@@ -687,7 +811,7 @@
         const item = document.createElement('div');
         item.className = 'file-pill';
         item.innerHTML = `<span><strong>${f.name}</strong> (${f.numPages} p.)</span>
-          <button style="background:none;border:none;color:var(--danger);cursor:pointer;font-weight:700;" data-idx="${idx}">✕</button>`;
+          <button style="background:none;border:none;color:var(--accent-coral);cursor:pointer;font-weight:700;" data-idx="${idx}">✕</button>`;
         list.appendChild(item);
       });
 
@@ -877,7 +1001,7 @@
       const dpr = Math.max(window.devicePixelRatio || 1, 2);
       const baseVp = page.getViewport({ scale: 1.0 });
       
-      const containerWidth = $('canvas-viewport').clientWidth - 32;
+      const containerWidth = $('canvas-viewport').clientWidth - 48;
       const fitScale = Math.min(containerWidth / baseVp.width, 1.4);
       
       const displayVp = page.getViewport({ scale: fitScale });
@@ -899,7 +1023,7 @@
       pageMatches.forEach(m => {
         m.pdfBoxes.forEach(box => {
           const rect = activeViewport.convertToViewportRectangle(box);
-          ctx.fillStyle = 'rgba(220, 38, 38, 0.4)';
+          ctx.fillStyle = 'rgba(255, 77, 45, 0.45)';
           ctx.fillRect(Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.abs(rect[2] - rect[0]), Math.abs(rect[3] - rect[1]));
         });
       });
@@ -907,7 +1031,7 @@
       // Hand-Drawn Boxes (Scaled via normalized ratios)
       pageManuals.forEach(r => {
         const [nx, ny, nw, nh] = r.normRect;
-        ctx.fillStyle = 'rgba(220, 38, 38, 0.6)';
+        ctx.fillStyle = 'rgba(255, 77, 45, 0.65)';
         ctx.fillRect(nx * canvas.width, ny * canvas.height, nw * canvas.width, nh * canvas.height);
       });
     }
@@ -946,8 +1070,8 @@
       const w = Math.abs(curPos.x - startPos.x);
       const h = Math.abs(curPos.y - startPos.y);
 
-      ctx.fillStyle = 'rgba(220, 38, 38, 0.35)';
-      ctx.strokeStyle = '#dc2626';
+      ctx.fillStyle = 'rgba(255, 77, 45, 0.35)';
+      ctx.strokeStyle = '#ff4d2d';
       ctx.lineWidth = 3;
       ctx.fillRect(x, y, w, h);
       ctx.strokeRect(x, y, w, h);
@@ -958,7 +1082,7 @@
       isDrawing = false;
       const endPos = getCoords(e);
 
-      // Store normalized coordinates (percentage ratio of canvas size)
+      // Store normalized coordinates
       const nx = Math.min(startPos.x, endPos.x) / canvas.width;
       const ny = Math.min(startPos.y, endPos.y) / canvas.height;
       const nw = Math.abs(endPos.x - startPos.x) / canvas.width;
