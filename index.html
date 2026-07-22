@@ -108,19 +108,6 @@
       color: var(--text-main);
     }
 
-    .privacy-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      background: var(--accent-green-bg);
-      color: var(--accent-green);
-      padding: 6px 14px;
-      border-radius: var(--radius-pill);
-      white-space: nowrap;
-    }
-
     /* --- BUTTON STYLES --- */
     .btn {
       display: inline-flex;
@@ -354,7 +341,8 @@
       box-shadow: var(--shadow-float);
       border-radius: var(--radius-sm);
       display: block;
-      touch-action: none;
+      touch-action: pan-x pan-y pinch-zoom;
+      transform-origin: 0 0;
     }
 
     /* Workspace Sidebar Controls */
@@ -543,6 +531,10 @@
     @media (max-width: 768px) {
       header { padding: 0 16px; }
       .privacy-badge-text { display: none; }
+      .hide-mobile { display: none !important; }
+      
+      .export-label { display: inline; }
+      .export-label-mobile { display: none; }
       
       .bento-grid { grid-template-columns: 1fr; }
       .hero-header h2 { font-size: 28px; }
@@ -566,7 +558,6 @@
 
       .sidebar.open { transform: translateY(0); }
       .mobile-drawer-toggle { display: flex; }
-      .hide-mobile { display: none !important; }
     }
   </style>
 </head>
@@ -582,12 +573,9 @@
         <h1>PDF Redactor</h1>
       </div>
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span class="privacy-badge">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          <span class="privacy-badge-text">100% In-Browser Privacy</span>
-        </span>
         <button id="btn-open-export" class="btn btn-accent btn-sm hidden">
-          <span>Export Document</span>
+          <span class="export-label hide-mobile">Export Document</span>
+          <span class="export-label-mobile">Export</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
         </button>
       </div>
@@ -638,9 +626,6 @@
                 Processing is 100% local. Redacted areas are permanently burned into flattened images, rendering data recovery impossible.
               </p>
             </div>
-            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; font-weight: 600; color: var(--accent-coral);">
-              ✓ High-grade pixel-flattened PDF engine
-            </div>
           </div>
         </div>
       </div>
@@ -655,6 +640,12 @@
             <button id="btn-prev-page" class="btn btn-secondary btn-sm">‹</button>
             <span id="page-indicator" class="page-indicator">1 / 1</span>
             <button id="btn-next-page" class="btn btn-secondary btn-sm">›</button>
+          </div>
+
+          <div class="toolbar-group">
+            <button id="btn-zoom-out" class="btn btn-secondary btn-sm hide-mobile" title="Zoom Out">−</button>
+            <button id="btn-zoom-reset" class="btn btn-secondary btn-sm hide-mobile" title="Reset Zoom">100%</button>
+            <button id="btn-zoom-in" class="btn btn-secondary btn-sm hide-mobile" title="Zoom In">+</button>
           </div>
 
           <div class="toolbar-group">
@@ -769,10 +760,28 @@
       manualRects: [], // Stores normalized rect coordinates [xRatio, yRatio, wRatio, hRatio]
       currentPage: 1,
       currentFileIndex: 0,
-      drawMode: true,
+      drawMode: false,
+      zoom: 1.2,
+      baseScale: 1.0,
     };
-
+    
     const $ = id => document.getElementById(id);
+    
+    let lastTouchDist = null;
+    let lastTouchCenter = null;
+    
+    function getTouchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    }
+    
+    function getTouchCenter(touches) {
+      return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2,
+      };
+    }
 
     function showToast(msg) {
       const existing = document.querySelector('.toast');
@@ -1002,7 +1011,8 @@
       const baseVp = page.getViewport({ scale: 1.0 });
       
       const containerWidth = $('canvas-viewport').clientWidth - 48;
-      const fitScale = Math.min(containerWidth / baseVp.width, 1.4);
+      const fitScale = Math.min(containerWidth / baseVp.width, 1.4) * state.zoom;
+      state.baseScale = fitScale / state.zoom;
       
       const displayVp = page.getViewport({ scale: fitScale });
       activeViewport = page.getViewport({ scale: fitScale * dpr });
@@ -1034,6 +1044,18 @@
         ctx.fillStyle = 'rgba(255, 77, 45, 0.65)';
         ctx.fillRect(nx * canvas.width, ny * canvas.height, nw * canvas.width, nh * canvas.height);
       });
+    }
+    
+    function setZoom(newZoom) {
+      state.zoom = Math.max(0.5, Math.min(5.0, newZoom));
+      $('btn-zoom-reset').textContent = `${Math.round(state.zoom * 100)}%`;
+      renderCurrentPage();
+    }
+    
+    function resetZoom() {
+      state.zoom = 1.0;
+      $('btn-zoom-reset').textContent = '100%';
+      renderCurrentPage();
     }
 
     // Drag-Draw Pointer Engine
@@ -1106,11 +1128,45 @@
     canvas.addEventListener('pointercancel', onPointerEnd);
 
     // Mode Toggle
+    canvas.style.touchAction = state.drawMode ? 'none' : 'pan-x pan-y pinch-zoom';
+    $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
+    
     $('btn-mode-toggle').addEventListener('click', () => {
       state.drawMode = !state.drawMode;
       $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
-      canvas.style.touchAction = state.drawMode ? 'none' : 'auto';
+      canvas.style.touchAction = state.drawMode ? 'none' : 'pan-x pan-y pinch-zoom';
       showToast(state.drawMode ? 'Draw Mode: ON' : 'Pan Mode: ON');
+    });
+
+    // Zoom Controls
+    $('btn-zoom-in').addEventListener('click', () => setZoom(state.zoom + 0.1));
+    $('btn-zoom-out').addEventListener('click', () => setZoom(state.zoom - 0.1));
+    $('btn-zoom-reset').addEventListener('click', resetZoom);
+    
+    // Pinch-to-Zoom Support
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2 && !state.drawMode) {
+        e.preventDefault();
+        lastTouchDist = getTouchDistance(e.touches);
+        lastTouchCenter = getTouchCenter(e.touches);
+      }
+    }, { passive: false });
+    
+    canvas.addEventListener('touchmove', (e) => {
+      if (!state.drawMode && e.touches.length === 2 && lastTouchDist) {
+        e.preventDefault();
+        const newDist = getTouchDistance(e.touches);
+        const scale = newDist / lastTouchDist;
+        setZoom(state.zoom * scale);
+        lastTouchDist = newDist;
+      }
+    }, { passive: false });
+    
+    canvas.addEventListener('touchend', (e) => {
+      if (!state.drawMode && e.touches.length < 2) {
+        lastTouchDist = null;
+        lastTouchCenter = null;
+      }
     });
 
     $('btn-clear-manual').addEventListener('click', () => {
