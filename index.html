@@ -144,10 +144,19 @@
     
     .btn-sm { padding: 6px 14px; font-size: 12px; }
 
+    .export-label-mobile { display: none; }
+
     .btn-toggle-active {
       background: var(--accent-coral-light) !important;
       color: var(--accent-coral) !important;
       border-color: rgba(255, 77, 45, 0.3) !important;
+    }
+
+    #btn-prev-page, #btn-next-page, #btn-zoom-in, #btn-zoom-out, #btn-undo-draw {
+      min-width: 44px;
+      height: 44px;
+      font-size: 22px;
+      padding: 0;
     }
 
     /* --- SCREEN 1: BENTO HERO UPLOAD --- */
@@ -411,7 +420,7 @@
 
     .section-title {
       font-family: var(--font-display);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -544,6 +553,7 @@
       header { padding: 0 16px; }
       .privacy-badge-text { display: none; }
       .hide-mobile { display: none !important; }
+      .export-label-mobile { display: inline !important; }
       
       #screen-upload {
         align-items: flex-start;
@@ -658,7 +668,7 @@
   <div id="app-container">
     <!-- Navigation Header -->
     <header>
-      <div class="brand">
+      <div id="brand" class="brand" style="cursor: pointer;">
         <div class="brand-logo">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
@@ -732,6 +742,9 @@
             </button>
             <button id="btn-clear-manual" class="btn btn-secondary btn-sm" title="Clear page drawings">
               🗑️
+            </button>
+            <button id="btn-undo-draw" class="btn btn-secondary btn-sm" title="Undo last drawing">
+              ↶
             </button>
           </div>
         </div>
@@ -903,6 +916,12 @@
       $('btn-open-export').classList.remove('hidden');
       renderCurrentPage();
       updateNav();
+    });
+
+    $('brand').addEventListener('click', () => {
+      $('screen-workspace').classList.add('hidden');
+      $('screen-upload').classList.remove('hidden');
+      $('btn-open-export').classList.add('hidden');
     });
 
     // Mobile Drawer Toggle
@@ -1332,6 +1351,16 @@
 
     $('btn-clear-manual').addEventListener('click', () => {
       state.manualRects = state.manualRects.filter(r => !(r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage));
+      renderCurrentPage();
+    });
+
+    $('btn-undo-draw').addEventListener('click', () => {
+      for (let i = state.manualRects.length - 1; i >= 0; i--) {
+        if (state.manualRects[i].fileIndex === state.currentFileIndex && state.manualRects[i].pageNumber === state.currentPage) {
+          state.manualRects.splice(i, 1);
+          break;
+        }
+      }
       renderCurrentPage();
     });
 
