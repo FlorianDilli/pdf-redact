@@ -263,12 +263,6 @@
       overflow: hidden;
     }
 
-    .bento-card-dark {
-      background: var(--surface-dark);
-      color: white;
-      border-color: var(--surface-dark);
-    }
-
     .drop-zone {
       border: 2px dashed var(--border-light);
       border-radius: var(--radius-md);
@@ -374,15 +368,28 @@
       border-radius: var(--radius-lg);
       background: rgba(255, 255, 255, 0.4);
       border: 1px dashed var(--border-light);
+      position: relative;
     }
 
-    #page-canvas {
-      background: white;
+    .canvas-wrapper {
+      position: relative;
+      display: inline-block;
       box-shadow: var(--shadow-float);
       border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: white;
+    }
+
+    #pdf-canvas {
       display: block;
-      touch-action: pan-x pan-y pinch-zoom;
-      transform-origin: 0 0;
+    }
+
+    #overlay-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      cursor: crosshair;
+      touch-action: none;
     }
 
     /* Workspace Sidebar Controls */
@@ -557,7 +564,6 @@
     /* --- MOBILE RESPONSIVENESS (< 768px) --- */
     @media (max-width: 768px) {
       header { padding: 0 16px; }
-      .privacy-badge-text { display: none; }
       .hide-mobile { display: none !important; }
       .export-label-mobile { display: inline !important; }
       
@@ -567,85 +573,37 @@
         padding-bottom: 16px;
       }
 
-       .hero-container {
-         max-width: 480px;
-         gap: 12px;
-         padding: 28px 16px;
-       }
-
-       .hero-header {
-         max-width: 100%;
-         padding: 0 4px;
-       }
-
-       .hero-header h2 {
-         font-size: 24px;
-         margin-bottom: 6px;
-         letter-spacing: -0.01em;
-       }
-
-       .hero-header .line-2 {
-         font-size: 20px;
-       }
-
-        .redact-badge {
-          font-size: 24px;
-          padding: 3px 6px 7px;
-          border-radius: 5px;
-        }
-
-       .hero-header p {
-         font-size: 14px;
-         margin: 0;
-       }
-
-       .hero-header .tag-pill {
-         font-size: 10px;
-         padding: 3px 10px;
-         margin-bottom: 6px;
-       }
-
-      .bento-grid {
-        grid-template-columns: 1fr;
+      .hero-container {
+        max-width: 480px;
         gap: 12px;
+        padding: 28px 16px;
       }
 
-      .bento-card {
-        padding: 16px;
+      .hero-header {
+        max-width: 100%;
+        padding: 0 4px;
       }
 
-      .bento-card-dark {
-        padding: 14px 16px;
-      }
-
-      .bento-card-dark h3 {
-        font-size: 16px;
-        margin: 6px 0 4px;
-      }
-
-      .bento-card-dark p {
-        font-size: 12px;
-        margin: 0;
-      }
-
-      .drop-zone {
-        padding: 24px 16px;
-        gap: 8px;
-      }
-
-      .drop-zone-icon {
-        width: 40px;
-        height: 40px;
-      }
-
-      .drop-zone p {
-        font-size: 13px;
-      }
-
-      .section-title {
-        font-size: 14px;
+      .hero-header h2 {
+        font-size: 24px;
         margin-bottom: 6px;
+        letter-spacing: -0.01em;
       }
+
+      .hero-header .line-2 { font-size: 20px; }
+
+      .redact-badge {
+        font-size: 24px;
+        padding: 3px 6px 7px;
+        border-radius: 5px;
+      }
+
+      .hero-header p { font-size: 14px; margin: 0; }
+
+      .bento-grid { grid-template-columns: 1fr; gap: 12px; }
+      .bento-card { padding: 16px; }
+      .drop-zone { padding: 24px 16px; gap: 8px; }
+      .drop-zone-icon { width: 40px; height: 40px; }
 
       #screen-workspace { flex-direction: column; }
       .main-canvas-area { padding: 10px; }
@@ -689,7 +647,7 @@
       </div>
     </header>
 
-    <!-- Phase 1: Upload Hero Screen (Bento Layout) -->
+    <!-- Phase 1: Upload Hero Screen -->
     <main id="screen-upload">
       <div class="hero-container">
         <div class="hero-header">
@@ -698,7 +656,6 @@
         </div>
 
         <div class="bento-grid">
-          <!-- Bento Main Box: Upload -->
           <div class="bento-card">
             <div>
               <div class="section-title">Upload Document</div>
@@ -725,9 +682,8 @@
       </div>
     </main>
 
-    <!-- Phase 2: Unified Workspace Screen -->
+    <!-- Phase 2: Workspace Screen -->
     <main id="screen-workspace" class="hidden">
-      <!-- Main Canvas Viewport Area -->
       <section class="main-canvas-area">
         <div class="canvas-toolbar">
           <div class="toolbar-group">
@@ -765,13 +721,15 @@
         </div>
 
         <div id="canvas-viewport" class="canvas-viewport">
-          <canvas id="page-canvas"></canvas>
+          <div id="canvas-wrapper" class="canvas-wrapper">
+            <canvas id="pdf-canvas"></canvas>
+            <canvas id="overlay-canvas"></canvas>
+          </div>
         </div>
       </section>
 
-      <!-- Sidebar Controls / Mobile Bottom Sheet -->
+      <!-- Sidebar Controls -->
       <aside id="sidebar" class="sidebar">
-        <!-- Mobile Bottom Drawer Header Handle -->
         <div id="drawer-toggle" class="mobile-drawer-toggle">
           <span id="drawer-title">🔍 Search Terms & Controls</span>
           <span id="drawer-arrow">▲</span>
@@ -852,16 +810,19 @@
       files: [],
       searchTerms: [],
       matches: [],
-      manualRects: [], // Stores normalized rect coordinates [xRatio, yRatio, wRatio, hRatio]
+      manualRects: [], // Normalized rects [xRatio, yRatio, wRatio, hRatio]
       currentPage: 1,
       currentFileIndex: 0,
-      drawMode: false,
-      zoom: 1.2,
-      baseScale: 1.0,
+      drawMode: true,
+      zoom: 1.0,
+      renderTask: null,
+      isDrawing: false,
+      drawStart: { xRatio: 0, yRatio: 0 },
+      currentDrawingRect: null
     };
-    
+
     const $ = id => document.getElementById(id);
-    
+
     function showToast(msg) {
       const existing = document.querySelector('.toast');
       if (existing) existing.remove();
@@ -886,10 +847,10 @@
           numPages: pdfProxy.numPages,
           arrayBuffer: buffer
         }];
+        renderFileList();
       } catch (e) {
         showToast(`Error opening file: ${file.name}`);
       }
-      renderFileList();
     }
 
     function renderFileList() {
@@ -913,42 +874,344 @@
       $('btn-start-workspace').classList.toggle('hidden', state.files.length === 0);
     }
 
-    // --- NAVIGATION & VIEWS ---
+    // --- RENDERING & DRAWING ENGINE ---
+    async function renderCurrentPage() {
+      if (!state.files.length) return;
+      const file = state.files[state.currentFileIndex];
+      if (!file) return;
+
+      const pdfCanvas = $('pdf-canvas');
+      const overlayCanvas = $('overlay-canvas');
+
+      // Cancel previous render task if active
+      if (state.renderTask) {
+        try { state.renderTask.cancel(); } catch (e) {}
+      }
+
+      const page = await file.pdfProxy.getPage(state.currentPage);
+      const viewport = page.getViewport({ scale: state.zoom });
+      const dpr = window.devicePixelRatio || 1;
+
+      // Display dimensions
+      const cssWidth = Math.floor(viewport.width);
+      const cssHeight = Math.floor(viewport.height);
+
+      // Pixel resolution dimensions
+      const canvasWidth = Math.floor(viewport.width * dpr);
+      const canvasHeight = Math.floor(viewport.height * dpr);
+
+      // Canvas element sizing
+      pdfCanvas.width = canvasWidth;
+      pdfCanvas.height = canvasHeight;
+      pdfCanvas.style.width = `${cssWidth}px`;
+      pdfCanvas.style.height = `${cssHeight}px`;
+
+      overlayCanvas.width = canvasWidth;
+      overlayCanvas.height = canvasHeight;
+      overlayCanvas.style.width = `${cssWidth}px`;
+      overlayCanvas.style.height = `${cssHeight}px`;
+
+      const ctx = pdfCanvas.getContext('2d');
+      const transform = dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null;
+
+      state.renderTask = page.render({
+        canvasContext: ctx,
+        viewport: viewport,
+        transform: transform
+      });
+
+      try {
+        await state.renderTask.promise;
+        state.renderTask = null;
+        drawOverlay();
+      } catch (err) {
+        if (err.name !== 'RenderingCancelledException') console.error(err);
+      }
+    }
+
+    function drawOverlay() {
+      const canvas = $('overlay-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // 1. Draw active text matches
+      const pageMatches = state.matches.filter(m => m.pageIndex === state.currentPage && m.fileIndex === state.currentFileIndex && m.selected);
+      pageMatches.forEach(m => {
+        ctx.fillStyle = '#0f1115';
+        ctx.fillRect(m.xRatio * w, m.yRatio * h, m.wRatio * w, m.hRatio * h);
+      });
+
+      // 2. Draw manual redactions
+      const pageManuals = state.manualRects.filter(m => m.pageIndex === state.currentPage && m.fileIndex === state.currentFileIndex);
+      pageManuals.forEach(m => {
+        const rx = m.xRatio * w;
+        const ry = m.yRatio * h;
+        const rw = m.wRatio * w;
+        const rh = m.hRatio * h;
+
+        ctx.fillStyle = '#0f1115';
+        ctx.fillRect(rx, ry, rw, rh);
+
+        ctx.strokeStyle = '#ff4d2d';
+        ctx.lineWidth = 1.5 * (window.devicePixelRatio || 1);
+        ctx.strokeRect(rx, ry, rw, rh);
+      });
+
+      // 3. Draw active rectangle being drawn
+      if (state.currentDrawingRect) {
+        const rx = Math.min(state.currentDrawingRect.x1, state.currentDrawingRect.x2) * w;
+        const ry = Math.min(state.currentDrawingRect.y1, state.currentDrawingRect.y2) * h;
+        const rw = Math.abs(state.currentDrawingRect.x1 - state.currentDrawingRect.x2) * w;
+        const rh = Math.abs(state.currentDrawingRect.y1 - state.currentDrawingRect.y2) * h;
+
+        ctx.fillStyle = 'rgba(255, 77, 45, 0.35)';
+        ctx.fillRect(rx, ry, rw, rh);
+
+        ctx.strokeStyle = '#ff4d2d';
+        ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.setLineDash([]);
+      }
+    }
+
+    function getCanvasCoords(e, canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches && e.touches.length ? e.touches[0] : (e.changedTouches && e.changedTouches.length ? e.changedTouches[0] : e);
+      const xRatio = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+      const yRatio = Math.max(0, Math.min(1, (touch.clientY - rect.top) / rect.height));
+      return { xRatio, yRatio };
+    }
+
+    function setupDrawing() {
+      const canvas = $('overlay-canvas');
+
+      const startDraw = e => {
+        if (!state.drawMode) return;
+        e.preventDefault();
+        const coords = getCanvasCoords(e, canvas);
+        state.isDrawing = true;
+        state.drawStart = coords;
+        state.currentDrawingRect = { x1: coords.xRatio, y1: coords.yRatio, x2: coords.xRatio, y2: coords.yRatio };
+      };
+
+      const moveDraw = e => {
+        if (!state.isDrawing) return;
+        e.preventDefault();
+        const coords = getCanvasCoords(e, canvas);
+        state.currentDrawingRect = {
+          x1: state.drawStart.xRatio,
+          y1: state.drawStart.yRatio,
+          x2: coords.xRatio,
+          y2: coords.yRatio
+        };
+        drawOverlay();
+      };
+
+      const endDraw = e => {
+        if (!state.isDrawing) return;
+        state.isDrawing = false;
+        if (state.currentDrawingRect) {
+          const x = Math.min(state.currentDrawingRect.x1, state.currentDrawingRect.x2);
+          const y = Math.min(state.currentDrawingRect.y1, state.currentDrawingRect.y2);
+          const w = Math.abs(state.currentDrawingRect.x1 - state.currentDrawingRect.x2);
+          const h = Math.abs(state.currentDrawingRect.y1 - state.currentDrawingRect.y2);
+
+          if (w > 0.003 && h > 0.003) {
+            state.manualRects.push({
+              id: 'rect_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+              pageIndex: state.currentPage,
+              fileIndex: state.currentFileIndex,
+              xRatio: x,
+              yRatio: y,
+              wRatio: w,
+              hRatio: h
+            });
+            showToast('Redaction rectangle added');
+          }
+        }
+        state.currentDrawingRect = null;
+        drawOverlay();
+      };
+
+      canvas.addEventListener('mousedown', startDraw);
+      canvas.addEventListener('mousemove', moveDraw);
+      canvas.addEventListener('mouseup', endDraw);
+      canvas.addEventListener('mouseleave', endDraw);
+
+      canvas.addEventListener('touchstart', startDraw, { passive: false });
+      canvas.addEventListener('touchmove', moveDraw, { passive: false });
+      canvas.addEventListener('touchend', endDraw);
+      canvas.addEventListener('touchcancel', endDraw);
+    }
+
+    // --- SEARCH / MATCH SCANNER ---
+    async function scanPdfMatches() {
+      state.matches = [];
+      if (!state.files.length || !state.searchTerms.length) {
+        renderMatchesList();
+        drawOverlay();
+        return;
+      }
+
+      const file = state.files[state.currentFileIndex];
+      const terms = state.searchTerms.map(t => t.text.toLowerCase().trim()).filter(Boolean);
+      if (!terms.length) return;
+
+      for (let pageNum = 1; pageNum <= file.numPages; pageNum++) {
+        const page = await file.pdfProxy.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const viewport = page.getViewport({ scale: 1.0 });
+
+        textContent.items.forEach(item => {
+          const str = item.str;
+          if (!str || !str.trim()) return;
+          const lowerStr = str.toLowerCase();
+
+          terms.forEach(term => {
+            let matchIdx = lowerStr.indexOf(term);
+            while (matchIdx !== -1) {
+              const charWidth = item.width / str.length;
+              const matchWidth = charWidth * term.length;
+              const offsetLeft = charWidth * matchIdx;
+
+              const tx = item.transform[4] + offsetLeft;
+              const ty = item.transform[5];
+              const fontHeight = Math.abs(item.transform[3]) || item.height || 10;
+
+              const pdfRect = [tx, ty, tx + matchWidth, ty + fontHeight];
+              const [vx1, vy1, vx2, vy2] = viewport.convertToViewportRectangle(pdfRect);
+
+              const rx = Math.min(vx1, vx2);
+              const ry = Math.min(vy1, vy2);
+              const rw = Math.abs(vx2 - vx1);
+              const rh = Math.abs(vy2 - vy1);
+
+              const pad = 2;
+              const xRatio = Math.max(0, (rx - pad) / viewport.width);
+              const yRatio = Math.max(0, (ry - pad) / viewport.height);
+              const wRatio = Math.min(1 - xRatio, (rw + pad * 2) / viewport.width);
+              const hRatio = Math.min(1 - yRatio, (rh + pad * 2) / viewport.height);
+
+              state.matches.push({
+                id: 'm_' + Math.random().toString(36).substr(2, 9),
+                fileIndex: state.currentFileIndex,
+                pageIndex: pageNum,
+                term: term,
+                text: str.substr(matchIdx, term.length),
+                context: str,
+                xRatio, yRatio, wRatio, hRatio,
+                selected: true
+              });
+
+              matchIdx = lowerStr.indexOf(term, matchIdx + 1);
+            }
+          });
+        });
+      }
+
+      updateMatchCountBadge();
+      renderMatchesList();
+      drawOverlay();
+      showToast(`Found ${state.matches.length} matching term(s)`);
+    }
+
+    // --- NAVIGATION & UI HANDLERS ---
+    function updateNav() {
+      const file = state.files[state.currentFileIndex];
+      const numPages = file ? file.numPages : 1;
+      $('page-indicator').textContent = `${state.currentPage} / ${numPages}`;
+      $('btn-prev-page').disabled = state.currentPage <= 1;
+      $('btn-next-page').disabled = state.currentPage >= numPages;
+    }
+
     $('btn-start-workspace').addEventListener('click', () => {
       $('screen-upload').classList.add('hidden');
       $('screen-workspace').classList.remove('hidden');
       $('btn-open-export').classList.remove('hidden');
-      renderCurrentPage();
       updateNav();
+      renderCurrentPage();
+      setupDrawing();
     });
 
-    function resetState() {
+    $('brand').addEventListener('click', () => {
       state.files = [];
       state.searchTerms = [];
       state.matches = [];
       state.manualRects = [];
       state.currentPage = 1;
-      state.currentFileIndex = 0;
-      state.drawMode = false;
       renderFileList();
       renderTerms();
-      $('btn-start-workspace').classList.add('hidden');
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    $('brand').addEventListener('click', () => {
-      resetState();
       $('screen-workspace').classList.add('hidden');
       $('screen-upload').classList.remove('hidden');
       $('btn-open-export').classList.add('hidden');
     });
 
-    // Mobile Drawer Toggle
-    const sidebar = $('sidebar');
-    $('drawer-toggle').addEventListener('click', () => {
-      const isOpen = sidebar.classList.toggle('open');
-      $('drawer-arrow').textContent = isOpen ? '▼' : '▲';
+    // Zoom Controls
+    $('btn-zoom-in').addEventListener('click', () => {
+      if (state.zoom < 3.0) {
+        state.zoom = Math.round((state.zoom + 0.2) * 10) / 10;
+        $('btn-zoom-reset').textContent = `${Math.round(state.zoom * 100)}%`;
+        renderCurrentPage();
+      }
+    });
+
+    $('btn-zoom-out').addEventListener('click', () => {
+      if (state.zoom > 0.5) {
+        state.zoom = Math.round((state.zoom - 0.2) * 10) / 10;
+        $('btn-zoom-reset').textContent = `${Math.round(state.zoom * 100)}%`;
+        renderCurrentPage();
+      }
+    });
+
+    $('btn-zoom-reset').addEventListener('click', () => {
+      state.zoom = 1.0;
+      $('btn-zoom-reset').textContent = '100%';
+      renderCurrentPage();
+    });
+
+    // Mode Toggle & Clear/Undo
+    $('btn-mode-toggle').addEventListener('click', () => {
+      state.drawMode = !state.drawMode;
+      $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
+      $('overlay-canvas').style.cursor = state.drawMode ? 'crosshair' : 'default';
+    });
+
+    $('btn-clear-manual').addEventListener('click', () => {
+      const prevCount = state.manualRects.length;
+      state.manualRects = state.manualRects.filter(m => !(m.pageIndex === state.currentPage && m.fileIndex === state.currentFileIndex));
+      drawOverlay();
+      if (prevCount > state.manualRects.length) showToast('Cleared drawings on current page');
+    });
+
+    $('btn-undo-draw').addEventListener('click', () => {
+      if (state.manualRects.length > 0) {
+        state.manualRects.pop();
+        drawOverlay();
+        showToast('Undid last drawing');
+      }
+    });
+
+    // Page Navigation
+    $('btn-prev-page').addEventListener('click', () => {
+      if (state.currentPage > 1) {
+        state.currentPage--;
+        updateNav();
+        renderCurrentPage();
+      }
+    });
+
+    $('btn-next-page').addEventListener('click', () => {
+      const file = state.files[state.currentFileIndex];
+      if (file && state.currentPage < file.numPages) {
+        state.currentPage++;
+        updateNav();
+        renderCurrentPage();
+      }
     });
 
     // Terms Management
@@ -967,7 +1230,7 @@
       state.searchTerms.forEach(t => {
         const tag = document.createElement('span');
         tag.className = 'term-tag';
-        tag.innerHTML = `${t.text} <span class="remove-btn" data-id="${t.id}">×</span>`;
+        tag.innerHTML = `${escapeHtml(t.text)} <span class="remove-btn" data-id="${t.id}">×</span>`;
         container.appendChild(tag);
       });
       container.querySelectorAll('.remove-btn').forEach(b => {
@@ -981,501 +1244,194 @@
     $('btn-add-term').addEventListener('click', () => addTerm($('term-input').value));
     $('term-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTerm($('term-input').value); });
 
-    // Tabs
-    $('tab-auto').addEventListener('click', () => {
-      $('tab-auto').classList.add('active'); $('tab-matches').classList.remove('active');
-      $('tab-content-auto').classList.remove('hidden'); $('tab-content-matches').classList.add('hidden');
-    });
-    $('tab-matches').addEventListener('click', () => {
-      $('tab-matches').classList.add('active'); $('tab-auto').classList.remove('active');
-      $('tab-content-matches').classList.remove('hidden'); $('tab-content-auto').classList.add('hidden');
-    });
-
-    // --- SEARCH SCANNER ---
     $('btn-scan-matches').addEventListener('click', async () => {
-      if (state.searchTerms.length === 0) return showToast('Add at least one term first');
-      state.matches = [];
-      
-      for (let fi = 0; fi < state.files.length; fi++) {
-        const file = state.files[fi];
-        for (let pn = 1; pn <= file.numPages; pn++) {
-          const page = await file.pdfProxy.getPage(pn);
-          const textContent = await page.getTextContent();
-          let fullText = '';
-          const charMap = [];
+      $('btn-scan-matches').disabled = true;
+      $('btn-scan-matches').textContent = 'Scanning...';
+      await scanPdfMatches();
+      $('btn-scan-matches').disabled = false;
+      $('btn-scan-matches').textContent = 'Scan PDF Document';
+      switchTab('matches');
+    });
 
-          textContent.items.forEach(item => {
-            if (!item.str) return;
-            const fontSize = Math.hypot(item.transform[2], item.transform[3]) || 10;
-            const boxItem = { text: item.str, x: item.transform[4], y: item.transform[5], w: item.width || (item.str.length * fontSize * 0.5), h: item.height || fontSize };
-            for (let i = 0; i < item.str.length; i++) {
-              charMap.push({ item: boxItem, charIdx: i });
-              fullText += item.str[i];
-            }
-          });
+    // Match Review Tabs
+    function switchTab(tab) {
+      if (tab === 'auto') {
+        $('tab-auto').classList.add('active'); $('tab-matches').classList.remove('active');
+        $('tab-content-auto').classList.remove('hidden'); $('tab-content-matches').classList.add('hidden');
+      } else {
+        $('tab-matches').classList.add('active'); $('tab-auto').classList.remove('active');
+        $('tab-content-matches').classList.remove('hidden'); $('tab-content-auto').classList.add('hidden');
+      }
+    }
 
-          state.searchTerms.forEach(termObj => {
-            const regex = new RegExp(termObj.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-            let m;
-            while ((m = regex.exec(fullText)) !== null) {
-              const start = m.index;
-              const end = start + m[0].length;
-              const boxes = [];
-              let curItem = null, minC = Infinity, maxC = -Infinity;
+    $('tab-auto').addEventListener('click', () => switchTab('auto'));
+    $('tab-matches').addEventListener('click', () => switchTab('matches'));
 
-              for (let i = start; i < end; i++) {
-                const info = charMap[i];
-                if (!info) continue;
-                if (info.item !== curItem) {
-                  if (curItem) {
-                    const r1 = minC / curItem.text.length, r2 = (maxC + 1) / curItem.text.length;
-                    boxes.push([curItem.x + curItem.w * r1 - 2, curItem.y - curItem.h * 0.2, curItem.x + curItem.w * r2 + 2, curItem.y + curItem.h * 1.2]);
-                  }
-                  curItem = info.item; minC = info.charIdx; maxC = info.charIdx;
-                } else maxC = info.charIdx;
-              }
-              if (curItem) {
-                const r1 = minC / curItem.text.length, r2 = (maxC + 1) / curItem.text.length;
-                boxes.push([curItem.x + curItem.w * r1 - 2, curItem.y - curItem.h * 0.2, curItem.x + curItem.w * r2 + 2, curItem.y + curItem.h * 1.2]);
-              }
+    function renderMatchesList() {
+      const container = $('matches-container');
+      container.innerHTML = '';
 
-              state.matches.push({
-                id: Math.random().toString(36).substring(2, 7),
-                fileIndex: fi, pageNumber: pn, text: m[0],
-                context: fullText.substring(Math.max(0, start - 20), Math.min(fullText.length, end + 20)),
-                pdfBoxes: boxes, selected: true
-              });
-            }
-          });
-        }
+      if (state.matches.length === 0) {
+        container.innerHTML = '<p style="font-size: 13px; color: var(--text-muted); padding: 12px 0;">No matches found yet. Add terms and click Scan.</p>';
+        return;
       }
 
-      $('match-count-badge').textContent = state.matches.length;
-      renderMatchesList();
-      renderCurrentPage();
-      $('tab-matches').click();
-      showToast(`Found ${state.matches.length} matches`);
-    });
+      state.matches.forEach(m => {
+        const card = document.createElement('div');
+        card.className = `match-item ${m.selected ? 'active' : ''}`;
+        card.innerHTML = `
+          <input type="checkbox" ${m.selected ? 'checked' : ''} style="margin-top:2px;">
+          <div>
+            <div class="match-text">${escapeHtml(m.term)} (Page ${m.pageIndex})</div>
+            <div class="match-context">"...${escapeHtml(m.context)}..."</div>
+          </div>
+        `;
 
-    // Bulk selection controls
+        card.querySelector('input').addEventListener('change', e => {
+          e.stopPropagation();
+          m.selected = e.target.checked;
+          card.classList.toggle('active', m.selected);
+          drawOverlay();
+        });
+
+        card.addEventListener('click', () => {
+          if (state.currentPage !== m.pageIndex) {
+            state.currentPage = m.pageIndex;
+            updateNav();
+            renderCurrentPage();
+          }
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    function updateMatchCountBadge() { $('match-count-badge').textContent = state.matches.length; }
+    function escapeHtml(str) { return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
     $('btn-select-all').addEventListener('click', () => {
       state.matches.forEach(m => m.selected = true);
       renderMatchesList();
-      renderCurrentPage();
+      drawOverlay();
     });
 
     $('btn-deselect-all').addEventListener('click', () => {
       state.matches.forEach(m => m.selected = false);
       renderMatchesList();
-      renderCurrentPage();
+      drawOverlay();
     });
 
-    function renderMatchesList() {
-      const container = $('matches-container');
-      container.innerHTML = '';
-      state.matches.forEach(m => {
-        const item = document.createElement('div');
-        item.className = `match-item ${m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage ? 'active' : ''}`;
-        item.innerHTML = `
-          <input type="checkbox" ${m.selected ? 'checked' : ''}>
-          <div>
-            <div class="match-text">${m.text} (p. ${m.pageNumber})</div>
-            <div class="match-context">"${m.context}"</div>
-          </div>
-        `;
-        item.querySelector('input').addEventListener('change', e => {
-          m.selected = e.target.checked;
-          renderCurrentPage();
-        });
-        item.addEventListener('click', e => {
-          if (e.target.tagName === 'INPUT') return;
-          state.currentFileIndex = m.fileIndex;
-          state.currentPage = m.pageNumber;
-          renderCurrentPage();
-          updateNav();
-        });
-        container.appendChild(item);
-      });
-    }
+    // File Drag/Drop Listeners
+    const dropZone = $('drop-zone');
+    const fileInput = $('file-input');
 
-    // --- CANVAS ENGINE & DRAWING ---
-    let activeViewport = null;
-    const canvas = $('page-canvas');
-    let renderToken = 0;
-    let isPinching = false;
-    let lastTouchDist = null;
-    let currentPhysicalZoom = state.zoom;
-    let pendingZoomFrame = null;
-
-    function getTouchDistance(touches) {
-      const dx = touches[0].clientX - touches[1].clientX;
-      const dy = touches[0].clientY - touches[1].clientY;
-      return Math.hypot(dx, dy);
-    }
-
-    async function renderCurrentPage() {
-      if (pendingZoomFrame) {
-        clearTimeout(pendingZoomFrame);
-        pendingZoomFrame = null;
-      }
-      canvas.style.transform = '';
-
-      const token = ++renderToken;
-      if (!state.files.length) return;
-      const file = state.files[state.currentFileIndex];
-      const page = await file.pdfProxy.getPage(state.currentPage);
-      if (token !== renderToken) return;
-
-      const dpr = Math.max(window.devicePixelRatio || 1, 2);
-      const baseVp = page.getViewport({ scale: 1.0 });
-
-      const containerWidth = $('canvas-viewport').clientWidth - 48;
-      const fitScale = Math.min(containerWidth / baseVp.width, 1.4) * state.zoom;
-      const displayVp = page.getViewport({ scale: fitScale });
-      activeViewport = page.getViewport({ scale: fitScale * dpr });
-
-      canvas.width = Math.max(1, Math.round(activeViewport.width));
-      canvas.height = Math.max(1, Math.round(activeViewport.height));
-      canvas.style.width = `${Math.round(displayVp.width)}px`;
-      canvas.style.height = `${Math.round(displayVp.height)}px`;
-
-      if (token !== renderToken) return;
-
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, viewport: activeViewport }).promise;
-
-      if (token !== renderToken) return;
-
-      // Draw Highlights
-      const pageMatches = state.matches.filter(m => m.fileIndex === state.currentFileIndex && m.pageNumber === state.currentPage && m.selected);
-      const pageManuals = state.manualRects.filter(r => r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage);
-
-      // Auto-Search Matches
-      pageMatches.forEach(m => {
-        m.pdfBoxes.forEach(box => {
-          const rect = activeViewport.convertToViewportRectangle(box);
-          ctx.fillStyle = 'rgba(255, 77, 45, 0.45)';
-          ctx.fillRect(Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.abs(rect[2] - rect[0]), Math.abs(rect[3] - rect[1]));
-        });
-      });
-
-      // Hand-Drawn Boxes (Scaled via normalized ratios)
-      pageManuals.forEach(r => {
-        const [nx, ny, nw, nh] = r.normRect;
-        ctx.fillStyle = 'rgba(255, 77, 45, 0.65)';
-        ctx.fillRect(nx * canvas.width, ny * canvas.height, nw * canvas.width, nh * canvas.height);
-      });
-    }
-
-    function updateZoomTransform() {
-      const ratio = currentPhysicalZoom > 0 ? state.zoom / currentPhysicalZoom : 1;
-      if (Math.abs(ratio - 1) < 0.0005) {
-        canvas.style.transform = '';
-        return;
-      }
-      const dpr = Math.max(window.devicePixelRatio || 1, 2);
-      const x = ratio;
-      const y = ratio;
-      const originX = 50;
-      const originY = 50;
-      canvas.style.transformOrigin = `${originX}% ${originY}%`;
-      canvas.style.transform = `translate(${50 - originX}%, ${50 - originY}%) scale(${x}, ${y})`;
-    }
-
-    function setZoom(newZoom) {
-      state.zoom = Math.max(0.5, Math.min(5.0, newZoom));
-      $('btn-zoom-reset').textContent = `${Math.round(state.zoom * 100)}%`;
-      updateZoomTransform();
-      if (pendingZoomFrame) {
-        clearTimeout(pendingZoomFrame);
-        pendingZoomFrame = null;
-      }
-      pendingZoomFrame = setTimeout(() => {
-        currentPhysicalZoom = state.zoom;
-        canvas.style.transform = '';
-        renderCurrentPage();
-        pendingZoomFrame = null;
-      }, 80);
-    }
-
-    function resetZoom() {
-      state.zoom = 1.0;
-      $('btn-zoom-reset').textContent = '100%';
-      currentPhysicalZoom = state.zoom;
-      if (pendingZoomFrame) {
-        clearTimeout(pendingZoomFrame);
-        pendingZoomFrame = null;
-      }
-      canvas.style.transform = '';
-      renderCurrentPage();
-    }
-
-    // Drag-Draw Pointer Engine
-    let isDrawing = false, startPos = null, canvasSnapshot = null;
-    let isPanning = false, panStart = null, panScrollStart = null;
-
-    function getCoords(e) {
-      const r = canvas.getBoundingClientRect();
-      const cx = e.clientX - r.left;
-      const cy = e.clientY - r.top;
-      return {
-        x: cx * (canvas.width / r.width),
-        y: cy * (canvas.height / r.height)
-      };
-    }
-
-    function onPointerStart(e) {
-      if (state.drawMode) {
-        canvas.setPointerCapture(e.pointerId);
-        isDrawing = true;
-        startPos = getCoords(e);
-        const ctx = canvas.getContext('2d');
-        canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      } else {
-        canvas.setPointerCapture(e.pointerId);
-        isPanning = true;
-        panStart = { x: e.clientX, y: e.clientY };
-        panScrollStart = { x: $('canvas-viewport').scrollLeft, y: $('canvas-viewport').scrollTop };
-      }
-    }
-
-    function onPointerMove(e) {
-      if (isPanning) {
-        const vp = $('canvas-viewport');
-        vp.scrollLeft = panScrollStart.x - (e.clientX - panStart.x);
-        vp.scrollTop = panScrollStart.y - (e.clientY - panStart.y);
-        return;
-      }
-      if (!isDrawing || !canvasSnapshot) return;
-      const curPos = getCoords(e);
-      const ctx = canvas.getContext('2d');
-
-      ctx.putImageData(canvasSnapshot, 0, 0);
-      const x = Math.min(startPos.x, curPos.x);
-      const y = Math.min(startPos.y, curPos.y);
-      const w = Math.abs(curPos.x - startPos.x);
-      const h = Math.abs(curPos.y - startPos.y);
-
-      ctx.fillStyle = 'rgba(255, 77, 45, 0.35)';
-      ctx.strokeStyle = '#ff4d2d';
-      ctx.lineWidth = 3;
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeRect(x, y, w, h);
-    }
-
-    function onPointerEnd(e) {
-      if (isPanning) {
-        isPanning = false;
-        return;
-      }
-      if (!isDrawing) return;
-      isDrawing = false;
-      const endPos = getCoords(e);
-
-      const nx = Math.min(startPos.x, endPos.x) / canvas.width;
-      const ny = Math.min(startPos.y, endPos.y) / canvas.height;
-      const nw = Math.abs(endPos.x - startPos.x) / canvas.width;
-      const nh = Math.abs(endPos.y - startPos.y) / canvas.height;
-
-      if (nw > 0.005 && nh > 0.005) {
-        state.manualRects.push({
-          fileIndex: state.currentFileIndex,
-          pageNumber: state.currentPage,
-          normRect: [nx, ny, nw, nh]
-        });
-      }
-      canvasSnapshot = null;
-      renderCurrentPage();
-    }
-
-    // Pointer Event Listeners
-    canvas.addEventListener('pointerdown', onPointerStart);
-    canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('pointerup', onPointerEnd);
-    canvas.addEventListener('pointercancel', onPointerEnd);
-
-    // Mode Toggle
-    canvas.style.touchAction = state.drawMode ? 'none' : 'none';
-    $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
-
-    $('btn-mode-toggle').addEventListener('click', () => {
-      state.drawMode = !state.drawMode;
-      $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
-      canvas.style.touchAction = 'none';
-      showToast(state.drawMode ? 'Draw Mode: ON' : 'Pan Mode: ON');
+    dropZone.addEventListener('click', e => {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') fileInput.click();
     });
-
-    // Zoom Controls
-    $('btn-zoom-in').addEventListener('click', () => setZoom(state.zoom + 0.15));
-    $('btn-zoom-out').addEventListener('click', () => setZoom(state.zoom - 0.15));
-    $('btn-zoom-reset').addEventListener('click', resetZoom);
-
-    const viewport = $('canvas-viewport');
-    let wheelZoomToken = 0;
-    viewport.addEventListener('wheel', (e) => {
-      if (!e.ctrlKey) return;
+    fileInput.addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); });
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
       e.preventDefault();
-      wheelZoomToken++;
-      const token = wheelZoomToken;
-      const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
-      currentPhysicalZoom = state.zoom;
-      setZoom(state.zoom * factor);
-      if (token !== wheelZoomToken) return;
-      if (pendingZoomFrame) clearTimeout(pendingZoomFrame);
-      pendingZoomFrame = setTimeout(() => {
-        if (token !== wheelZoomToken) {
-          pendingZoomFrame = null;
-          return;
-        }
-        currentPhysicalZoom = state.zoom;
-        canvas.style.transform = '';
-        renderCurrentPage();
-        pendingZoomFrame = null;
-      }, 120);
-    }, { passive: false });
-
-    // Pinch-to-Zoom Support
-    canvas.addEventListener('touchstart', (e) => {
-      if (!state.drawMode && e.touches.length === 2) {
-        isPinching = true;
-        lastTouchDist = getTouchDistance(e.touches);
-      }
-    }, { passive: true });
-
-    canvas.addEventListener('touchmove', (e) => {
-      if (!state.drawMode && isPinching && e.touches.length === 2) {
-        e.preventDefault();
-        const newDist = getTouchDistance(e.touches);
-        if (lastTouchDist > 0) {
-          const scale = newDist / lastTouchDist;
-          currentPhysicalZoom = state.zoom;
-          setZoom(state.zoom * scale);
-        }
-        lastTouchDist = newDist;
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', () => {
-      isPinching = false;
-      lastTouchDist = null;
-      currentPhysicalZoom = state.zoom;
-      if (pendingZoomFrame) {
-        clearTimeout(pendingZoomFrame);
-        pendingZoomFrame = null;
-      }
-      canvas.style.transform = '';
-      renderCurrentPage();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
     });
 
-    $('btn-clear-manual').addEventListener('click', () => {
-      state.manualRects = state.manualRects.filter(r => !(r.fileIndex === state.currentFileIndex && r.pageNumber === state.currentPage));
-      renderCurrentPage();
+    // Mobile Sheet Toggle
+    const sidebar = $('sidebar');
+    $('drawer-toggle').addEventListener('click', () => {
+      const isOpen = sidebar.classList.toggle('open');
+      $('drawer-arrow').textContent = isOpen ? '▼' : '▲';
     });
 
-    $('btn-undo-draw').addEventListener('click', () => {
-      for (let i = state.manualRects.length - 1; i >= 0; i--) {
-        if (state.manualRects[i].fileIndex === state.currentFileIndex && state.manualRects[i].pageNumber === state.currentPage) {
-          state.manualRects.splice(i, 1);
-          break;
-        }
-      }
-      renderCurrentPage();
-    });
-
-    // Navigation Controls
-    function updateNav() {
-      const f = state.files[state.currentFileIndex];
-      $('page-indicator').textContent = `${state.currentPage} / ${f ? f.numPages : 1}`;
-    }
-
-    $('btn-prev-page').addEventListener('click', () => {
-      if (state.currentPage > 1) { state.currentPage--; renderCurrentPage(); updateNav(); }
-    });
-    $('btn-next-page').addEventListener('click', () => {
-      const f = state.files[state.currentFileIndex];
-      if (state.currentPage < f.numPages) { state.currentPage++; renderCurrentPage(); updateNav(); }
-    });
-
-    // Dropzone Events
-    const dz = $('drop-zone');
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
-    $('file-input').addEventListener('change', e => handleFiles(e.target.files));
-
-    // Export Process
+    // --- EXPORT PDF GENERATOR ---
     $('btn-open-export').addEventListener('click', () => {
-      const selected = state.matches.filter(m => m.selected).length;
+      const activeMatches = state.matches.filter(m => m.selected).length;
+      const manualCount = state.manualRects.length;
+
       $('modal-summary-content').innerHTML = `
-        <div class="summary-row"><span>Total Pages:</span> <strong>${state.files.reduce((a,b)=>a+b.numPages,0)}</strong></div>
-        <div class="summary-row"><span>Auto Redactions:</span> <strong>${selected}</strong></div>
-        <div class="summary-row"><span>Hand Drawn Boxes:</span> <strong>${state.manualRects.length}</strong></div>
+        <div class="summary-row"><span>Total Pages:</span> <strong>${state.files[0] ? state.files[0].numPages : 0}</strong></div>
+        <div class="summary-row"><span>Text Search Redactions:</span> <strong>${activeMatches}</strong></div>
+        <div class="summary-row"><span>Manual Area Redactions:</span> <strong>${manualCount}</strong></div>
       `;
+      $('export-progress').classList.add('hidden');
       $('export-modal').classList.remove('hidden');
     });
 
     $('btn-close-modal').addEventListener('click', () => $('export-modal').classList.add('hidden'));
 
     $('btn-download').addEventListener('click', async () => {
+      if (!state.files.length) return;
+      const file = state.files[0];
+
       $('export-progress').classList.remove('hidden');
-      const { PDFDocument } = PDFLib;
-      const pdfDoc = await PDFDocument.create();
-      
-      let processed = 0, total = state.files.reduce((a,b)=>a+b.numPages,0);
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
+      $('btn-download').disabled = true;
+      $('btn-close-modal').disabled = true;
 
-      for (let fi = 0; fi < state.files.length; fi++) {
-        const file = state.files[fi];
-        for (let pn = 1; pn <= file.numPages; pn++) {
-          const page = await file.pdfProxy.getPage(pn);
-          const vp = page.getViewport({ scale: 2.0 });
-          const unscaled = page.getViewport({ scale: 1.0 });
+      try {
+        const { PDFDocument } = window.PDFLib;
+        const newPdfDoc = await PDFDocument.create();
+        const totalPages = file.numPages;
 
-          tempCanvas.width = vp.width; 
-          tempCanvas.height = vp.height;
-          await page.render({ canvasContext: tempCtx, viewport: vp }).promise;
+        for (let p = 1; p <= totalPages; p++) {
+          $('progress-text').textContent = `Processing page ${p} of ${totalPages}...`;
+          $('progress-fill').style.width = `${Math.round((p / totalPages) * 100)}%`;
 
-          // Burn Redactions as solid black rectangles
-          const pMatches = state.matches.filter(m => m.fileIndex === fi && m.pageNumber === pn && m.selected);
-          const pManuals = state.manualRects.filter(r => r.fileIndex === fi && r.pageNumber === pn);
+          const page = await file.pdfProxy.getPage(p);
+          const exportScale = 2.0;
+          const viewport = page.getViewport({ scale: exportScale });
 
-          tempCtx.fillStyle = '#000000';
+          const offCanvas = document.createElement('canvas');
+          offCanvas.width = Math.floor(viewport.width);
+          offCanvas.height = Math.floor(viewport.height);
+          const offCtx = offCanvas.getContext('2d');
 
-          // 1. Burn Auto Matches
-          pMatches.forEach(m => m.pdfBoxes.forEach(b => {
-            const r = vp.convertToViewportRectangle(b);
-            tempCtx.fillRect(Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.abs(r[2] - r[0]), Math.abs(r[3] - r[1]));
-          }));
+          await page.render({ canvasContext: offCtx, viewport: viewport }).promise;
 
-          // 2. Burn Hand Drawn Boxes using relative ratios
-          pManuals.forEach(r => {
-            const [nx, ny, nw, nh] = r.normRect;
-            tempCtx.fillRect(nx * tempCanvas.width, ny * tempCanvas.height, nw * tempCanvas.width, nh * tempCanvas.height);
+          // Burn search matches
+          const pMatches = state.matches.filter(m => m.pageIndex === p && m.fileIndex === state.currentFileIndex && m.selected);
+          pMatches.forEach(m => {
+            offCtx.fillStyle = '#0f1115';
+            offCtx.fillRect(m.xRatio * offCanvas.width, m.yRatio * offCanvas.height, m.wRatio * offCanvas.width, m.hRatio * offCanvas.height);
           });
 
-          const blob = await new Promise(res => tempCanvas.toBlob(res, 'image/png'));
-          const imgBytes = await blob.arrayBuffer();
-          const embeddedImg = await pdfDoc.embedPng(imgBytes);
+          // Burn manual rects
+          const pManuals = state.manualRects.filter(m => m.pageIndex === p && m.fileIndex === state.currentFileIndex);
+          pManuals.forEach(m => {
+            offCtx.fillStyle = '#0f1115';
+            offCtx.fillRect(m.xRatio * offCanvas.width, m.yRatio * offCanvas.height, m.wRatio * offCanvas.width, m.hRatio * offCanvas.height);
+          });
 
-          const pdfPage = pdfDoc.addPage([unscaled.width, unscaled.height]);
-          pdfPage.drawImage(embeddedImg, { x: 0, y: 0, width: unscaled.width, height: unscaled.height });
+          const imgDataUrl = offCanvas.toDataURL('image/png');
+          const pngImage = await newPdfDoc.embedPng(imgDataUrl);
 
-          processed++;
-          $('progress-fill').style.width = `${(processed/total)*100}%`;
+          const pdfPage = newPdfDoc.addPage([viewport.width / exportScale, viewport.height / exportScale]);
+          pdfPage.drawImage(pngImage, {
+            x: 0,
+            y: 0,
+            width: viewport.width / exportScale,
+            height: viewport.height / exportScale
+          });
         }
-      }
 
-      const bytes = await pdfDoc.save();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-      a.download = 'redacted-document.pdf';
-      a.click();
-      
-      $('export-modal').classList.add('hidden');
-      $('export-progress').classList.add('hidden');
-      showToast('Export Complete!');
+        $('progress-text').textContent = 'Generating PDF file...';
+        const pdfBytes = await newPdfDoc.save();
+
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = file.name.replace(/\.pdf$/i, '') + '_redacted.pdf';
+        link.click();
+
+        showToast('PDF successfully exported!');
+        $('export-modal').classList.add('hidden');
+      } catch (err) {
+        console.error(err);
+        showToast('Export failed. Please try again.');
+      } finally {
+        $('btn-download').disabled = false;
+        $('btn-close-modal').disabled = false;
+      }
     });
   </script>
 </body>
