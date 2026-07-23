@@ -483,8 +483,28 @@
     }
     .term-tag .remove-btn { cursor: pointer; font-size: 14px; opacity: 0.7; }
     .term-tag .remove-btn:hover { opacity: 1; }
+    .term-tag.term-tag-regex { background: var(--accent-coral); }
 
-    .match-item {
+    .preset-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .preset-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--accent-coral-light);
+      color: var(--accent-coral);
+      border: 1px solid rgba(255, 77, 45, 0.2);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .preset-chip:hover { background: rgba(255, 77, 45, 0.15); border-color: rgba(255, 77, 45, 0.4); }
+
+    .match-context { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
       display: flex;
       align-items: flex-start;
       gap: 12px;
@@ -751,6 +771,11 @@
               <input type="text" id="term-input" placeholder="e.g. John Doe, SSN">
               <button id="btn-add-term" class="btn btn-primary btn-sm">Add</button>
             </div>
+            <div class="preset-chips" style="margin-top: 8px;">
+              <button class="preset-chip" data-preset-id="email">Email Address</button>
+              <button class="preset-chip" data-preset-id="phone">Phone Number</button>
+              <button class="preset-chip" data-preset-id="credit">Credit Card</button>
+            </div>
           </div>
 
           <div>
@@ -830,6 +855,12 @@
       pinchStartZoom: 1.0,
       pinchCenterClient: { x: 0, y: 0 }
     };
+
+    const PATTERN_PRESETS = [
+      { id: 'email', label: 'Email Address', regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g },
+      { id: 'phone', label: 'Phone Number', regex: /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g },
+      { id: 'credit', label: 'Credit Card', regex: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g }
+    ];
 
     const $ = id => document.getElementById(id);
 
@@ -1211,7 +1242,7 @@
       }
 
       const file = state.files[state.currentFileIndex];
-      const terms = state.searchTerms.map(t => t.text.toLowerCase().trim()).filter(Boolean);
+      const terms = state.searchTerms.filter(t => t.text.trim());
       if (!terms.length) return;
 
       for (let pageNum = 1; pageNum <= file.numPages; pageNum++) {
@@ -1222,45 +1253,90 @@
         textContent.items.forEach(item => {
           const str = item.str;
           if (!str || !str.trim()) return;
-          const lowerStr = str.toLowerCase();
 
           terms.forEach(term => {
-            let matchIdx = lowerStr.indexOf(term);
-            while (matchIdx !== -1) {
-              const charWidth = item.width / str.length;
-              const matchWidth = charWidth * term.length;
-              const offsetLeft = charWidth * matchIdx;
+            if (term.regex) {
+              const regex = new RegExp(term.regex.source, term.regex.flags);
+              let match;
+              while ((match = regex.exec(str)) !== null) {
+                const matchIdx = match.index;
+                const matchLen = match[0].length;
+                const charWidth = item.width / str.length;
+                const matchWidth = charWidth * matchLen;
+                const offsetLeft = charWidth * matchIdx;
 
-              const tx = item.transform[4] + offsetLeft;
-              const ty = item.transform[5];
-              const fontHeight = Math.abs(item.transform[3]) || item.height || 10;
+                const tx = item.transform[4] + offsetLeft;
+                const ty = item.transform[5];
+                const fontHeight = Math.abs(item.transform[3]) || item.height || 10;
 
-              const pdfRect = [tx, ty, tx + matchWidth, ty + fontHeight];
-              const [vx1, vy1, vx2, vy2] = viewport.convertToViewportRectangle(pdfRect);
+                const pdfRect = [tx, ty, tx + matchWidth, ty + fontHeight];
+                const [vx1, vy1, vx2, vy2] = viewport.convertToViewportRectangle(pdfRect);
 
-              const rx = Math.min(vx1, vx2);
-              const ry = Math.min(vy1, vy2);
-              const rw = Math.abs(vx2 - vx1);
-              const rh = Math.abs(vy2 - vy1);
+                const rx = Math.min(vx1, vx2);
+                const ry = Math.min(vy1, vy2);
+                const rw = Math.abs(vx2 - vx1);
+                const rh = Math.abs(vy2 - vy1);
 
-              const pad = 2;
-              const xRatio = Math.max(0, (rx - pad) / viewport.width);
-              const yRatio = Math.max(0, (ry - pad) / viewport.height);
-              const wRatio = Math.min(1 - xRatio, (rw + pad * 2) / viewport.width);
-              const hRatio = Math.min(1 - yRatio, (rh + pad * 2) / viewport.height);
+                const pad = 2;
+                const xRatio = Math.max(0, (rx - pad) / viewport.width);
+                const yRatio = Math.max(0, (ry - pad) / viewport.height);
+                const wRatio = Math.min(1 - xRatio, (rw + pad * 2) / viewport.width);
+                const hRatio = Math.min(1 - yRatio, (rh + pad * 2) / viewport.height);
 
-              state.matches.push({
-                id: 'm_' + Math.random().toString(36).substr(2, 9),
-                fileIndex: state.currentFileIndex,
-                pageIndex: pageNum,
-                term: term,
-                text: str.substr(matchIdx, term.length),
-                context: str,
-                xRatio, yRatio, wRatio, hRatio,
-                selected: true
-              });
+                state.matches.push({
+                  id: 'm_' + Math.random().toString(36).substr(2, 9),
+                  fileIndex: state.currentFileIndex,
+                  pageIndex: pageNum,
+                  term: term.text,
+                  presetId: term.presetId,
+                  text: match[0],
+                  context: str,
+                  xRatio, yRatio, wRatio, hRatio,
+                  selected: true
+                });
 
-              matchIdx = lowerStr.indexOf(term, matchIdx + 1);
+                if (matchLen === 0) regex.lastIndex++;
+              }
+            } else {
+              const lowerStr = str.toLowerCase();
+              const lowerTerm = term.text.toLowerCase();
+              let matchIdx = lowerStr.indexOf(lowerTerm);
+              while (matchIdx !== -1) {
+                const charWidth = item.width / str.length;
+                const matchWidth = charWidth * lowerTerm.length;
+                const offsetLeft = charWidth * matchIdx;
+
+                const tx = item.transform[4] + offsetLeft;
+                const ty = item.transform[5];
+                const fontHeight = Math.abs(item.transform[3]) || item.height || 10;
+
+                const pdfRect = [tx, ty, tx + matchWidth, ty + fontHeight];
+                const [vx1, vy1, vx2, vy2] = viewport.convertToViewportRectangle(pdfRect);
+
+                const rx = Math.min(vx1, vx2);
+                const ry = Math.min(vy1, vy2);
+                const rw = Math.abs(vx2 - vx1);
+                const rh = Math.abs(vy2 - vy1);
+
+                const pad = 2;
+                const xRatio = Math.max(0, (rx - pad) / viewport.width);
+                const yRatio = Math.max(0, (ry - pad) / viewport.height);
+                const wRatio = Math.min(1 - xRatio, (rw + pad * 2) / viewport.width);
+                const hRatio = Math.min(1 - yRatio, (rh + pad * 2) / viewport.height);
+
+                state.matches.push({
+                  id: 'm_' + Math.random().toString(36).substr(2, 9),
+                  fileIndex: state.currentFileIndex,
+                  pageIndex: pageNum,
+                  term: term.text,
+                  text: str.substr(matchIdx, lowerTerm.length),
+                  context: str,
+                  xRatio, yRatio, wRatio, hRatio,
+                  selected: true
+                });
+
+                matchIdx = lowerStr.indexOf(lowerTerm, matchIdx + 1);
+              }
             }
           });
         });
@@ -1374,7 +1450,15 @@
     });
 
     // Terms Management
-    function addTerm(text) {
+    function addTerm(text, presetId) {
+      if (presetId) {
+        const preset = PATTERN_PRESETS.find(p => p.id === presetId);
+        if (!preset) return;
+        if (state.searchTerms.some(t => t.presetId === presetId)) return;
+        state.searchTerms.push({ id: Date.now(), text: preset.label, presetId, regex: preset.regex });
+        renderTerms();
+        return;
+      }
       const clean = text.trim();
       if (!clean) return;
       if (state.searchTerms.some(t => t.text.toLowerCase() === clean.toLowerCase())) return;
@@ -1388,8 +1472,8 @@
       container.innerHTML = '';
       state.searchTerms.forEach(t => {
         const tag = document.createElement('span');
-        tag.className = 'term-tag';
-        tag.innerHTML = `${escapeHtml(t.text)} <span class="remove-btn" data-id="${t.id}">×</span>`;
+        tag.className = 'term-tag' + (t.regex ? ' term-tag-regex' : '');
+        tag.innerHTML = `${escapeHtml(t.text)}${t.regex ? ' 🔍' : ''} <span class="remove-btn" data-id="${t.id}">×</span>`;
         container.appendChild(tag);
       });
       container.querySelectorAll('.remove-btn').forEach(b => {
@@ -1402,6 +1486,10 @@
 
     $('btn-add-term').addEventListener('click', () => addTerm($('term-input').value));
     $('term-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTerm($('term-input').value); });
+
+    document.querySelectorAll('.preset-chip').forEach(chip => {
+      chip.addEventListener('click', () => addTerm(null, chip.dataset.presetId));
+    });
 
     $('btn-scan-matches').addEventListener('click', async () => {
       $('btn-scan-matches').disabled = true;
@@ -1438,11 +1526,12 @@
       state.matches.forEach(m => {
         const card = document.createElement('div');
         card.className = `match-item ${m.selected ? 'active' : ''}`;
+        const presetLabel = m.presetId ? `<span style="font-size:10px;background:var(--accent-coral-light);color:var(--accent-coral);padding:2px 6px;border-radius:6px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${escapeHtml(m.presetId)}</span>` : '';
         card.innerHTML = `
           <input type="checkbox" ${m.selected ? 'checked' : ''} style="margin-top:2px;">
           <div>
-            <div class="match-text">${escapeHtml(m.term)} (Page ${m.pageIndex})</div>
-            <div class="match-context">"...${escapeHtml(m.context)}..."</div>
+            <div class="match-text">${escapeHtml(m.term)} (Page ${m.pageIndex}) ${presetLabel}</div>
+            <div class="match-context">"...${escapeHtml(m.text)}..."</div>
           </div>
         `;
 
