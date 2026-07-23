@@ -156,7 +156,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 96px 20px 48px;
+      padding: 32px 20px;
       overflow-y: auto;
     }
 
@@ -165,7 +165,10 @@
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 56px;
+      gap: 24px;
+      background: #F9F9F9;
+      border-radius: var(--radius-lg);
+      padding: 48px 24px;
     }
 
     .hero-header {
@@ -174,41 +177,42 @@
       margin: 0 auto;
     }
 
-    .highlight-redact {
-      background: var(--surface-dark);
-      color: var(--text-inverse);
-      padding: 2px 8px;
-      border-radius: var(--radius-sm);
-      font-weight: 800;
-    }
-
-    .tag-pill {
-      display: inline-block;
-      font-family: var(--font-display);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      background: var(--surface-subtle);
-      color: var(--text-muted);
-      padding: 4px 12px;
-      border-radius: var(--radius-pill);
-      margin-bottom: 12px;
-    }
-
     .hero-header h2 {
       font-family: var(--font-display);
-      font-size: 36px;
+      font-size: 52px;
       font-weight: 800;
       letter-spacing: -0.03em;
       line-height: 1.15;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      color: #111111;
+    }
+
+    .hero-header .line-2 {
+      display: block;
+      color: #71717A;
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .redact-badge {
+      display: inline-block;
+      background: #000000;
+      color: #FFFFFF;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      vertical-align: baseline;
     }
 
     .hero-header p {
-      font-size: 15px;
-      color: var(--text-muted);
-      line-height: 1.5;
+      font-size: 18px;
+      color: #555555;
+      line-height: 1.6;
     }
 
     /* Bento Grid Layout */
@@ -543,36 +547,47 @@
       
       #screen-upload {
         align-items: flex-start;
-        padding-top: 48px;
-        padding-bottom: 24px;
+        padding-top: 16px;
+        padding-bottom: 16px;
       }
 
-      .hero-container {
-        max-width: 480px;
-        gap: 32px;
-      }
+       .hero-container {
+         max-width: 480px;
+         gap: 12px;
+         padding: 28px 16px;
+       }
 
-      .hero-header {
-        max-width: 100%;
-        padding: 0 4px;
-      }
+       .hero-header {
+         max-width: 100%;
+         padding: 0 4px;
+       }
 
-      .hero-header h2 {
-        font-size: 22px;
-        margin-bottom: 6px;
-        letter-spacing: -0.01em;
-      }
+       .hero-header h2 {
+         font-size: 24px;
+         margin-bottom: 6px;
+         letter-spacing: -0.01em;
+       }
 
-      .hero-header p {
-        font-size: 13px;
-        margin: 0;
-      }
+       .hero-header .line-2 {
+         font-size: 20px;
+       }
 
-      .hero-header .tag-pill {
-        font-size: 10px;
-        padding: 3px 10px;
-        margin-bottom: 6px;
-      }
+       .redact-badge {
+         font-size: 24px;
+         padding: 1px 6px;
+         border-radius: 5px;
+       }
+
+       .hero-header p {
+         font-size: 14px;
+         margin: 0;
+       }
+
+       .hero-header .tag-pill {
+         font-size: 10px;
+         padding: 3px 10px;
+         margin-bottom: 6px;
+       }
 
       .bento-grid {
         grid-template-columns: 1fr;
@@ -662,8 +677,8 @@
     <main id="screen-upload">
       <div class="hero-container">
         <div class="hero-header">
-          <h2>Permanently <span class="highlight-redact">redact</span> PDFs right in your browser.</h2>
-          <p>100% private. Files never leave your device.</p>
+          <h2>Permanently <span class="redact-badge">redact</span> PDFs<br><span class="line-2">right in your browser.</span></h2>
+          <p>100% private. Files never leave your device.<br>Free &amp; Open Source.</p>
         </div>
 
         <div class="bento-grid">
