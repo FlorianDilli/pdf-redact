@@ -239,7 +239,6 @@
       line-height: 1.6;
     }
 
-    /* Bento Grid Layout */
     .bento-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -365,8 +364,6 @@
       overflow: auto;
       padding: 16px;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
       -webkit-overflow-scrolling: touch;
       border-radius: var(--radius-lg);
       background: rgba(255, 255, 255, 0.4);
@@ -382,6 +379,7 @@
       overflow: hidden;
       background: white;
       margin: auto;
+      flex-shrink: 0;
     }
 
     #pdf-canvas {
@@ -700,7 +698,7 @@
             </button>
           </div>
 
-          <!-- Unhidden Zoom Controls for Mobile & Desktop -->
+          <!-- Zoom Controls -->
           <div class="toolbar-group">
             <button id="btn-zoom-out" class="btn btn-secondary btn-sm toolbar-icon-btn" title="Zoom Out">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
@@ -711,8 +709,9 @@
             </button>
           </div>
 
+          <!-- Draw/Pan Mode & History Controls -->
           <div class="toolbar-group">
-            <button id="btn-mode-toggle" class="btn btn-secondary btn-sm btn-toggle-active toolbar-icon-btn" title="Toggle Draw Mode">
+            <button id="btn-mode-toggle" class="btn btn-secondary btn-sm btn-toggle-active toolbar-icon-btn" title="Current Mode: Draw Redaction">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-2.4-1.35-3.93-3.97-3.93-6.71A7.5 7.5 0 0 1 13.56 3.5c2.74 0 4.36 1.5 6.71 3.93"/><path d="m14.06 9.06 2.83-2.83"/></svg>
             </button>
             <button id="btn-clear-manual" class="btn btn-secondary btn-sm toolbar-icon-btn" title="Clear page drawings">
@@ -817,11 +816,13 @@
       manualRects: [], // Normalized rects [xRatio, yRatio, wRatio, hRatio]
       currentPage: 1,
       currentFileIndex: 0,
-      drawMode: true,
+      drawMode: true, // true = Redact tool, false = Pan tool
       zoom: 1.0,
-      userHasZoomed: false, // Tracks manual zoom overrides
+      userHasZoomed: false,
       renderTask: null,
       isDrawing: false,
+      isPanning: false,
+      panStart: { x: 0, y: 0, scrollLeft: 0, scrollTop: 0 },
       drawStart: { xRatio: 0, yRatio: 0 },
       currentDrawingRect: null
     };
@@ -852,7 +853,7 @@
           numPages: pdfProxy.numPages,
           arrayBuffer: buffer
         }];
-        state.userHasZoomed = false; // Reset fit calculations on new file
+        state.userHasZoomed = false;
         renderFileList();
       } catch (e) {
         showToast(`Error opening file: ${file.name}`);
@@ -880,19 +881,38 @@
       $('btn-start-workspace').classList.toggle('hidden', state.files.length === 0);
     }
 
-    // Calculate auto-fit zoom scale so pages never open cropped on mobile
+    // Calculate fit zoom
     function calculateFitWidthZoom(page) {
       const viewportArea = $('canvas-viewport');
       if (!viewportArea) return 1.0;
-      const padding = 24; // Padding offset
+      const padding = 24;
       const availableWidth = viewportArea.clientWidth - padding;
       const unscaledViewport = page.getViewport({ scale: 1.0 });
       if (availableWidth > 0 && unscaledViewport.width > 0) {
         const fitScale = availableWidth / unscaledViewport.width;
-        // Clamp scale between reasonable bounds
         return Math.min(1.5, Math.max(0.3, Math.floor(fitScale * 100) / 100));
       }
       return 1.0;
+    }
+
+    // Update Mode UI & Tooltip
+    function updateModeUI() {
+      const btn = $('btn-mode-toggle');
+      const overlayCanvas = $('overlay-canvas');
+
+      if (state.drawMode) {
+        btn.classList.add('btn-toggle-active');
+        btn.title = 'Current Mode: Draw Redaction (Click to switch to Pan Mode)';
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-2.4-1.35-3.93-3.97-3.93-6.71A7.5 7.5 0 0 1 13.56 3.5c2.74 0 4.36 1.5 6.71 3.93"/><path d="m14.06 9.06 2.83-2.83"/></svg>`;
+        overlayCanvas.style.cursor = 'crosshair';
+        overlayCanvas.style.touchAction = 'none';
+      } else {
+        btn.classList.remove('btn-toggle-active');
+        btn.title = 'Current Mode: Pan Page (Click to switch to Draw Mode)';
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 0 1 2 2v4a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>`;
+        overlayCanvas.style.cursor = 'grab';
+        overlayCanvas.style.touchAction = 'pan-x pan-y';
+      }
     }
 
     // --- RENDERING & DRAWING ENGINE ---
@@ -904,14 +924,12 @@
       const pdfCanvas = $('pdf-canvas');
       const overlayCanvas = $('overlay-canvas');
 
-      // Cancel previous render task if active
       if (state.renderTask) {
         try { state.renderTask.cancel(); } catch (e) {}
       }
 
       const page = await file.pdfProxy.getPage(state.currentPage);
 
-      // Auto-fit page width on initial load if user hasn't explicitly set zoom
       if (!state.userHasZoomed) {
         state.zoom = calculateFitWidthZoom(page);
       }
@@ -920,15 +938,12 @@
       const viewport = page.getViewport({ scale: state.zoom });
       const dpr = window.devicePixelRatio || 1;
 
-      // Display dimensions
       const cssWidth = Math.floor(viewport.width);
       const cssHeight = Math.floor(viewport.height);
 
-      // Pixel resolution dimensions
       const canvasWidth = Math.floor(viewport.width * dpr);
       const canvasHeight = Math.floor(viewport.height * dpr);
 
-      // Canvas element sizing
       pdfCanvas.width = canvasWidth;
       pdfCanvas.height = canvasHeight;
       pdfCanvas.style.width = `${cssWidth}px`;
@@ -966,14 +981,14 @@
 
       ctx.clearRect(0, 0, w, h);
 
-      // 1. Draw active text matches
+      // 1. Text matches
       const pageMatches = state.matches.filter(m => m.pageIndex === state.currentPage && m.fileIndex === state.currentFileIndex && m.selected);
       pageMatches.forEach(m => {
         ctx.fillStyle = '#0f1115';
         ctx.fillRect(m.xRatio * w, m.yRatio * h, m.wRatio * w, m.hRatio * h);
       });
 
-      // 2. Draw manual redactions
+      // 2. Manual redactions
       const pageManuals = state.manualRects.filter(m => m.pageIndex === state.currentPage && m.fileIndex === state.currentFileIndex);
       pageManuals.forEach(m => {
         const rx = m.xRatio * w;
@@ -989,12 +1004,12 @@
         ctx.strokeRect(rx, ry, rw, rh);
       });
 
-      // 3. Draw active rectangle being drawn
+      // 3. Active rectangle drawing preview
       if (state.currentDrawingRect) {
         const rx = Math.min(state.currentDrawingRect.x1, state.currentDrawingRect.x2) * w;
         const ry = Math.min(state.currentDrawingRect.y1, state.currentDrawingRect.y2) * h;
         const rw = Math.abs(state.currentDrawingRect.x1 - state.currentDrawingRect.x2) * w;
-        const rh = Math.abs(state.currentDrawingRect.y1 - state.currentDrawingRect.y2) * h;
+        const rh = Math.abs(state.currentDrawingRect.x1 - state.currentDrawingRect.x2) * h;
 
         ctx.fillStyle = 'rgba(255, 77, 45, 0.35)';
         ctx.fillRect(rx, ry, rw, rh);
@@ -1015,33 +1030,78 @@
       return { xRatio, yRatio };
     }
 
-    function setupDrawing() {
+    // --- DUAL DRAW & PAN INTERACTION SYSTEM ---
+    function setupInteractions() {
       const canvas = $('overlay-canvas');
+      const viewport = $('canvas-viewport');
 
-      const startDraw = e => {
-        if (!state.drawMode) return;
-        e.preventDefault();
-        const coords = getCanvasCoords(e, canvas);
-        state.isDrawing = true;
-        state.drawStart = coords;
-        state.currentDrawingRect = { x1: coords.xRatio, y1: coords.yRatio, x2: coords.xRatio, y2: coords.yRatio };
+      const handlePointerDown = e => {
+        // Multi-touch gestures (2+ fingers) -> Pass through to browser panning
+        if (e.touches && e.touches.length > 1) {
+          state.isDrawing = false;
+          state.currentDrawingRect = null;
+          drawOverlay();
+          return;
+        }
+
+        if (state.drawMode) {
+          e.preventDefault();
+          const coords = getCanvasCoords(e, canvas);
+          state.isDrawing = true;
+          state.drawStart = coords;
+          state.currentDrawingRect = { x1: coords.xRatio, y1: coords.yRatio, x2: coords.xRatio, y2: coords.yRatio };
+        } else {
+          // Pan Mode Mouse Drag
+          if (e.type === 'mousedown') {
+            state.isPanning = true;
+            canvas.style.cursor = 'grabbing';
+            state.panStart = {
+              x: e.clientX,
+              y: e.clientY,
+              scrollLeft: viewport.scrollLeft,
+              scrollTop: viewport.scrollTop
+            };
+          }
+        }
       };
 
-      const moveDraw = e => {
-        if (!state.isDrawing) return;
-        e.preventDefault();
-        const coords = getCanvasCoords(e, canvas);
-        state.currentDrawingRect = {
-          x1: state.drawStart.xRatio,
-          y1: state.drawStart.yRatio,
-          x2: coords.xRatio,
-          y2: coords.yRatio
-        };
-        drawOverlay();
+      const handlePointerMove = e => {
+        if (e.touches && e.touches.length > 1) {
+          if (state.isDrawing) {
+            state.isDrawing = false;
+            state.currentDrawingRect = null;
+            drawOverlay();
+          }
+          return;
+        }
+
+        if (state.drawMode && state.isDrawing) {
+          e.preventDefault();
+          const coords = getCanvasCoords(e, canvas);
+          state.currentDrawingRect = {
+            x1: state.drawStart.xRatio,
+            y1: state.drawStart.yRatio,
+            x2: coords.xRatio,
+            y2: coords.yRatio
+          };
+          drawOverlay();
+        } else if (!state.drawMode && state.isPanning && e.type === 'mousemove') {
+          e.preventDefault();
+          const dx = e.clientX - state.panStart.x;
+          const dy = e.clientY - state.panStart.y;
+          viewport.scrollLeft = state.panStart.scrollLeft - dx;
+          viewport.scrollTop = state.panStart.scrollTop - dy;
+        }
       };
 
-      const endDraw = e => {
+      const handlePointerEnd = e => {
+        if (state.isPanning) {
+          state.isPanning = false;
+          canvas.style.cursor = state.drawMode ? 'crosshair' : 'grab';
+        }
+
         if (!state.isDrawing) return;
+
         state.isDrawing = false;
         if (state.currentDrawingRect) {
           const x = Math.min(state.currentDrawingRect.x1, state.currentDrawingRect.x2);
@@ -1066,15 +1126,16 @@
         drawOverlay();
       };
 
-      canvas.addEventListener('mousedown', startDraw);
-      canvas.addEventListener('mousemove', moveDraw);
-      canvas.addEventListener('mouseup', endDraw);
-      canvas.addEventListener('mouseleave', endDraw);
+      // Mouse Listeners
+      canvas.addEventListener('mousedown', handlePointerDown);
+      window.addEventListener('mousemove', handlePointerMove);
+      window.addEventListener('mouseup', handlePointerEnd);
 
-      canvas.addEventListener('touchstart', startDraw, { passive: false });
-      canvas.addEventListener('touchmove', moveDraw, { passive: false });
-      canvas.addEventListener('touchend', endDraw);
-      canvas.addEventListener('touchcancel', endDraw);
+      // Touch Listeners
+      canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+      canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+      canvas.addEventListener('touchend', handlePointerEnd);
+      canvas.addEventListener('touchcancel', handlePointerEnd);
     }
 
     // --- SEARCH / MATCH SCANNER ---
@@ -1162,8 +1223,9 @@
       $('screen-workspace').classList.remove('hidden');
       $('btn-open-export').classList.remove('hidden');
       updateNav();
+      updateModeUI();
       renderCurrentPage();
-      setupDrawing();
+      setupInteractions();
     });
 
     $('brand').addEventListener('click', () => {
@@ -1198,7 +1260,7 @@
     });
 
     $('btn-zoom-reset').addEventListener('click', () => {
-      state.userHasZoomed = false; // Triggers dynamic fit recalculation
+      state.userHasZoomed = false;
       renderCurrentPage();
     });
 
@@ -1208,11 +1270,11 @@
       }
     });
 
-    // Mode Toggle & Clear/Undo
+    // Mode Toggle & History Controls
     $('btn-mode-toggle').addEventListener('click', () => {
       state.drawMode = !state.drawMode;
-      $('btn-mode-toggle').classList.toggle('btn-toggle-active', state.drawMode);
-      $('overlay-canvas').style.cursor = state.drawMode ? 'crosshair' : 'default';
+      updateModeUI();
+      showToast(state.drawMode ? 'Draw Mode: Drag to redact' : 'Pan Mode: Drag page to move');
     });
 
     $('btn-clear-manual').addEventListener('click', () => {
