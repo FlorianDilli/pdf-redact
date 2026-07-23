@@ -1066,6 +1066,8 @@
     let renderToken = 0;
     let isPinching = false;
     let lastTouchDist = null;
+    let currentPhysicalZoom = state.zoom;
+    let pendingZoomFrame = null;
 
     function getTouchDistance(touches) {
       const dx = touches[0].clientX - touches[1].clientX;
@@ -1074,6 +1076,12 @@
     }
 
     async function renderCurrentPage() {
+      if (pendingZoomFrame) {
+        clearTimeout(pendingZoomFrame);
+        pendingZoomFrame = null;
+      }
+      canvas.style.transform = '';
+
       const token = ++renderToken;
       if (!state.files.length) return;
       const file = state.files[state.currentFileIndex];
