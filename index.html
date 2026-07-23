@@ -1130,15 +1130,46 @@
       });
     }
 
+    function updateZoomTransform() {
+      const ratio = currentPhysicalZoom > 0 ? state.zoom / currentPhysicalZoom : 1;
+      if (Math.abs(ratio - 1) < 0.0005) {
+        canvas.style.transform = '';
+        return;
+      }
+      const dpr = Math.max(window.devicePixelRatio || 1, 2);
+      const x = ratio;
+      const y = ratio;
+      const originX = 50;
+      const originY = 50;
+      canvas.style.transformOrigin = `${originX}% ${originY}%`;
+      canvas.style.transform = `translate(${50 - originX}%, ${50 - originY}%) scale(${x}, ${y})`;
+    }
+
     function setZoom(newZoom) {
       state.zoom = Math.max(0.5, Math.min(5.0, newZoom));
       $('btn-zoom-reset').textContent = `${Math.round(state.zoom * 100)}%`;
-      renderCurrentPage();
+      updateZoomTransform();
+      if (pendingZoomFrame) {
+        clearTimeout(pendingZoomFrame);
+        pendingZoomFrame = null;
+      }
+      pendingZoomFrame = setTimeout(() => {
+        currentPhysicalZoom = state.zoom;
+        canvas.style.transform = '';
+        renderCurrentPage();
+        pendingZoomFrame = null;
+      }, 80);
     }
 
     function resetZoom() {
       state.zoom = 1.0;
       $('btn-zoom-reset').textContent = '100%';
+      currentPhysicalZoom = state.zoom;
+      if (pendingZoomFrame) {
+        clearTimeout(pendingZoomFrame);
+        pendingZoomFrame = null;
+      }
+      canvas.style.transform = '';
       renderCurrentPage();
     }
 
@@ -1243,12 +1274,27 @@
     $('btn-zoom-reset').addEventListener('click', resetZoom);
 
     const viewport = $('canvas-viewport');
+    let wheelZoomToken = 0;
     viewport.addEventListener('wheel', (e) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-        setZoom(state.zoom * factor);
-      }
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      wheelZoomToken++;
+      const token = wheelZoomToken;
+      const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      currentPhysicalZoom = state.zoom;
+      setZoom(state.zoom * factor);
+      if (token !== wheelZoomToken) return;
+      if (pendingZoomFrame) clearTimeout(pendingZoomFrame);
+      pendingZoomFrame = setTimeout(() => {
+        if (token !== wheelZoomToken) {
+          pendingZoomFrame = null;
+          return;
+        }
+        currentPhysicalZoom = state.zoom;
+        canvas.style.transform = '';
+        renderCurrentPage();
+        pendingZoomFrame = null;
+      }, 120);
     }, { passive: false });
 
     // Pinch-to-Zoom Support
@@ -1265,6 +1311,7 @@
         const newDist = getTouchDistance(e.touches);
         if (lastTouchDist > 0) {
           const scale = newDist / lastTouchDist;
+          currentPhysicalZoom = state.zoom;
           setZoom(state.zoom * scale);
         }
         lastTouchDist = newDist;
@@ -1274,6 +1321,13 @@
     canvas.addEventListener('touchend', () => {
       isPinching = false;
       lastTouchDist = null;
+      currentPhysicalZoom = state.zoom;
+      if (pendingZoomFrame) {
+        clearTimeout(pendingZoomFrame);
+        pendingZoomFrame = null;
+      }
+      canvas.style.transform = '';
+      renderCurrentPage();
     });
 
     $('btn-clear-manual').addEventListener('click', () => {
