@@ -1009,7 +1009,7 @@
         const rx = Math.min(state.currentDrawingRect.x1, state.currentDrawingRect.x2) * w;
         const ry = Math.min(state.currentDrawingRect.y1, state.currentDrawingRect.y2) * h;
         const rw = Math.abs(state.currentDrawingRect.x1 - state.currentDrawingRect.x2) * w;
-        const rh = Math.abs(state.currentDrawingRect.x1 - state.currentDrawingRect.x2) * h;
+        const rh = Math.abs(state.currentDrawingRect.y1 - state.currentDrawingRect.y2) * h;
 
         ctx.fillStyle = 'rgba(255, 77, 45, 0.35)';
         ctx.fillRect(rx, ry, rw, rh);
