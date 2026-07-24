@@ -696,9 +696,7 @@
 
             <div id="file-pill-list" class="file-pill-list"></div>
 
-            <button id="btn-start-workspace" class="btn btn-accent hidden" style="width: 100%; margin-top: 16px;">
-              Open Workspace →
-            </button>
+            
           </div>
         </div>
       </div>
@@ -838,10 +836,10 @@
       files: [],
       searchTerms: [],
       matches: [],
-      manualRects: [], // Normalized rects [xRatio, yRatio, wRatio, hRatio]
+      manualRects: [],
       currentPage: 1,
       currentFileIndex: 0,
-      drawMode: true, // true = Redact tool, false = Pan tool
+      drawMode: true,
       zoom: 1.0,
       userHasZoomed: false,
       renderTask: null,
@@ -853,7 +851,8 @@
       isPinching: false,
       pinchStartDistance: 0,
       pinchStartZoom: 1.0,
-      pinchCenterClient: { x: 0, y: 0 }
+      pinchCenterClient: { x: 0, y: 0 },
+      workspaceInitialized: false
     };
 
     const PATTERN_PRESETS = [
@@ -875,46 +874,45 @@
     }
 
     // --- FILE HANDLING ---
-    async function handleFiles(files) {
-      const file = Array.from(files)[0];
-      if (!file) return;
-      try {
-        const buffer = await file.arrayBuffer();
-        const pdfProxy = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
-        state.files = [{
-          id: Math.random().toString(36).substring(2, 9),
-          name: file.name || 'document.pdf',
-          pdfProxy,
-          numPages: pdfProxy.numPages,
-          arrayBuffer: buffer
-        }];
-        state.userHasZoomed = false;
-        renderFileList();
-      } catch (e) {
-        showToast(`Error opening file: ${file.name}`);
-      }
-    }
+async function handleFiles(files) {
+       const file = Array.from(files)[0];
+       if (!file) return;
+       try {
+         const buffer = await file.arrayBuffer();
+         const pdfProxy = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
+         state.files = [{
+           id: Math.random().toString(36).substring(2, 9),
+           name: file.name || 'document.pdf',
+           pdfProxy,
+           numPages: pdfProxy.numPages,
+           arrayBuffer: buffer
+         }];
+         state.userHasZoomed = false;
+         renderFileList();
+         switchToWorkspace();
+       } catch (e) {
+         showToast(`Error opening file: ${file.name}`);
+       }
+     }
 
-    function renderFileList() {
-      const list = $('file-pill-list');
-      list.innerHTML = '';
-      state.files.forEach((f, idx) => {
-        const item = document.createElement('div');
-        item.className = 'file-pill';
-        item.innerHTML = `<span><strong>${f.name}</strong> (${f.numPages} p.)</span>
-          <button style="background:none;border:none;color:var(--accent-coral);cursor:pointer;font-weight:700;" data-idx="${idx}">✕</button>`;
-        list.appendChild(item);
-      });
+function renderFileList() {
+       const list = $('file-pill-list');
+       list.innerHTML = '';
+       state.files.forEach((f, idx) => {
+         const item = document.createElement('div');
+         item.className = 'file-pill';
+         item.innerHTML = `<span><strong>${f.name}</strong> (${f.numPages} p.)</span>
+           <button style="background:none;border:none;color:var(--accent-coral);cursor:pointer;font-weight:700;" data-idx="${idx}">✕</button>`;
+         list.appendChild(item);
+       });
 
-      list.querySelectorAll('button').forEach(b => {
-        b.addEventListener('click', e => {
-          state.files.splice(parseInt(e.target.dataset.idx), 1);
-          renderFileList();
-        });
-      });
-
-      $('btn-start-workspace').classList.toggle('hidden', state.files.length === 0);
-    }
+       list.querySelectorAll('button').forEach(b => {
+         b.addEventListener('click', e => {
+           state.files.splice(parseInt(e.target.dataset.idx), 1);
+           renderFileList();
+         });
+       });
+     }
 
     // Calculate fit zoom
     function calculateFitWidthZoom(page) {
@@ -1357,29 +1355,33 @@
       $('btn-next-page').disabled = state.currentPage >= numPages;
     }
 
-    $('btn-start-workspace').addEventListener('click', () => {
-      $('screen-upload').classList.add('hidden');
-      $('screen-workspace').classList.remove('hidden');
-      $('btn-open-export').classList.remove('hidden');
-      updateNav();
-      updateModeUI();
-      renderCurrentPage();
-      setupInteractions();
-    });
+function switchToWorkspace() {
+       $('screen-upload').classList.add('hidden');
+       $('screen-workspace').classList.remove('hidden');
+       $('btn-open-export').classList.remove('hidden');
+       updateNav();
+       updateModeUI();
+       renderCurrentPage();
+       if (!state.workspaceInitialized) {
+         setupInteractions();
+         state.workspaceInitialized = true;
+       }
+     }
 
-    $('brand').addEventListener('click', () => {
-      state.files = [];
-      state.searchTerms = [];
-      state.matches = [];
-      state.manualRects = [];
-      state.currentPage = 1;
-      state.userHasZoomed = false;
-      renderFileList();
-      renderTerms();
-      $('screen-workspace').classList.add('hidden');
-      $('screen-upload').classList.remove('hidden');
-      $('btn-open-export').classList.add('hidden');
-    });
+$('brand').addEventListener('click', () => {
+       state.files = [];
+       state.searchTerms = [];
+       state.matches = [];
+       state.manualRects = [];
+       state.currentPage = 1;
+       state.userHasZoomed = false;
+       state.workspaceInitialized = false;
+       renderFileList();
+       renderTerms();
+       $('screen-workspace').classList.add('hidden');
+       $('screen-upload').classList.remove('hidden');
+       $('btn-open-export').classList.add('hidden');
+     });
 
     // Zoom Controls
     $('btn-zoom-in').addEventListener('click', () => {
